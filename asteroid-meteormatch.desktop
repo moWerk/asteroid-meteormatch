@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Meteormatch
+Exec=asteroid-meteormatch
+Icon=ios-apps-outline
+X-Asteroid-Needs-Repaint=true
+X-Asteroid-Center-Color=#1A1A2E
+X-Asteroid-Outer-Color=#0A0A14
+Comment=Match rocks to win this Meteormatch
+

@@ -18,7 +18,7 @@
 import QtQuick 2.9
 import org.asteroid.controls 1.0
 import org.asteroid.utils 1.0
-import Nemo.Configuration 1.0
+import org.asteroid.meteormatch 1.0
 
 Application {
     id: app
@@ -26,75 +26,42 @@ Application {
     centerColor: "#1A1A2E"
     outerColor:  "#0A0A14"
 
-    // ── Persistent state ─────────────────────────────────────────────────────
-    ConfigurationValue {
-        id: savedBoard
-        key:          "/asteroid/apps/meteormatch/boardState"
-        defaultValue: ""
-    }
-
-    ConfigurationValue {
-        id: savedPendingTap
-        key:          "/asteroid/apps/meteormatch/pendingTap"
-        defaultValue: ""
-    }
-
-    ConfigurationValue {
-        id: savedDirty
-        key:          "/asteroid/apps/meteormatch/boardDirty"
-        defaultValue: false
-    }
-
-    ConfigurationValue {
-        id: savedScore
-        key:          "/asteroid/apps/meteormatch/score"
-        defaultValue: 0
-    }
-
-    ConfigurationValue {
-        id: highScore
-        key:          "/asteroid/apps/meteormatch/highScore"
-        defaultValue: 0
-    }
-    // ────────────────────────────────────────────────────────────────────────
-
     // ── Save / load ───────────────────────────────────────────────────────────
-    function saveMove(col, row) {
-        savedDirty.value      = true
-        savedPendingTap.value = col + "," + row
-    }
+    // GameStorage is a C++ QSettings singleton — every write syncs to disk
+    // immediately, surviving power loss and hard kills.
 
     function saveResult() {
-        savedBoard.value      = board.boardToJson()
-        savedScore.value      = board.score
-        savedPendingTap.value = ""
-        savedDirty.value      = false
+        GameStorage.dirty      = true
+        GameStorage.board      = board.boardToJson()
+        GameStorage.score      = board.score
+        GameStorage.pendingTap = ""
+        GameStorage.dirty      = false
     }
 
     function loadOrInit() {
-        if (savedDirty.value && savedBoard.value !== "" && savedPendingTap.value !== "") {
-            // Power-loss recovery: replay last move on the pre-move board
-            board.loadBoard(savedBoard.value)
-            board.score = savedScore.value
-            var parts = savedPendingTap.value.split(",")
+        var savedBoard = GameStorage.board
+        var savedScore = GameStorage.score
+        var dirty      = GameStorage.dirty
+        var pending    = GameStorage.pendingTap
+
+        if (dirty && savedBoard !== "" && pending !== "") {
+            board.score = savedScore
+            board.loadBoard(savedBoard)
+            var parts = pending.split(",")
             board.handleTap(parseInt(parts[0]), parseInt(parts[1]))
-        } else if (savedBoard.value !== "") {
-            board.loadBoard(savedBoard.value)
-            board.score = savedScore.value
+        } else if (savedBoard !== "") {
+            board.score = savedScore
+            board.loadBoard(savedBoard)
         } else {
             board.initBoard()
-            board.score = 0
         }
     }
 
     function newGame() {
-        board.score      = 0
-        board.gameState  = "playing"
+        board.gameState = "playing"
+        board.score     = 0
+        GameStorage.clear()
         board.initBoard()
-        savedBoard.value      = ""
-        savedPendingTap.value = ""
-        savedDirty.value      = false
-        savedScore.value      = 0
     }
     // ────────────────────────────────────────────────────────────────────────
 
@@ -102,11 +69,18 @@ Application {
     GameBoard {
         id: board
 
-        onBoardChanged:    saveResult()
-        onScoreChanged:    {}   // score written in saveResult() after move settles
+        onBoardChanged: saveResult()
+        onScoreDelta:   {}
+        // Write-ahead: persist dirty flag + tap coords before deaths start.
+        // If the app is killed mid-cascade, recovery in loadOrInit replays
+        // this tap against the last clean board state.
+        onTapStarted: {
+            GameStorage.dirty      = true
+            GameStorage.pendingTap = col + "," + row
+            GameStorage.score      = board.score   // pre-tap score
+        }
         onGameOver: {
-            if (board.score > highScore.value)
-                highScore.value = board.score
+            GameStorage.highScore = board.score   // setter ignores if not higher
             gameOverOverlay.visible = true
         }
     }
@@ -120,10 +94,10 @@ Application {
             horizontalCenter: parent.horizontalCenter
             topMargin:        Dims.l(4)
         }
-        text:            board.score
-        font.pixelSize:  Dims.l(8)
-        visible:         board.gameState !== "gameover"
-        color:           "#E0E0E0"
+        text:           board.score
+        font.pixelSize: Dims.l(8)
+        visible:        board.gameState !== "gameover"
+        color:          "#E0E0E0"
     }
     // ────────────────────────────────────────────────────────────────────────
 
@@ -159,12 +133,11 @@ Application {
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 //% "Best"
-                text:           qsTrId("id-best") + ": " + highScore.value
+                text:           qsTrId("id-best") + ": " + GameStorage.highScore
                 font.pixelSize: Dims.l(7)
                 color:          "#AAAAAA"
             }
 
-            // Tap anywhere below to restart — no dedicated button needed on watch
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 //% "Tap to play again"
