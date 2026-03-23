@@ -1,7 +1,0 @@
-[Desktop Entry]
-Type=Application
-Categories=Games;
-Exec=invoker --single-instance --type=qtcomponents-qt5 /usr/bin/asteroid-meteormatch
-Icon=ios-grid
-X-Asteroid-Center-Color=#1A1A2E
-X-Asteroid-Outer-Color=#0A0A14
