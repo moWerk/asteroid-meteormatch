@@ -16,8 +16,15 @@
  */
 
 #include <asteroidapp.h>
+#include <QtQml>
+#include "GameStorage.h"
 
 int main(int argc, char *argv[])
 {
+    qmlRegisterSingletonType<GameStorage>(
+        "org.asteroid.meteormatch", 1, 0,
+        "GameStorage",
+        GameStorage::qmlInstance);
+
     return AsteroidApp::main(argc, argv);
 }
