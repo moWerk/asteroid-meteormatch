@@ -27,11 +27,13 @@ class GameStorage : public QObject
 {
     Q_OBJECT
 
-    Q_PROPERTY(int    score     READ score     WRITE setScore     NOTIFY scoreChanged)
-    Q_PROPERTY(int    highScore READ highScore WRITE setHighScore NOTIFY highScoreChanged)
-    Q_PROPERTY(QString board    READ board     WRITE setBoard     NOTIFY boardChanged)
-    Q_PROPERTY(bool   dirty     READ dirty     WRITE setDirty     NOTIFY dirtyChanged)
+    Q_PROPERTY(int     score      READ score      WRITE setScore      NOTIFY scoreChanged)
+    Q_PROPERTY(int     highScore  READ highScore  WRITE setHighScore  NOTIFY highScoreChanged)
+    Q_PROPERTY(QString board      READ board      WRITE setBoard      NOTIFY boardChanged)
+    Q_PROPERTY(bool    dirty      READ dirty      WRITE setDirty      NOTIFY dirtyChanged)
     Q_PROPERTY(QString pendingTap READ pendingTap WRITE setPendingTap NOTIFY pendingTapChanged)
+    Q_PROPERTY(double  panX       READ panX       WRITE setPanX       NOTIFY panXChanged)
+    Q_PROPERTY(double  panY       READ panY       WRITE setPanY       NOTIFY panYChanged)
 
 public:
     explicit GameStorage(QObject *parent = nullptr);
@@ -43,14 +45,18 @@ public:
     QString board()      const;
     bool    dirty()      const;
     QString pendingTap() const;
+    double  panX()       const;
+    double  panY()       const;
 
     void setScore(int v);
     void setHighScore(int v);
     void setBoard(const QString &v);
     void setDirty(bool v);
     void setPendingTap(const QString &v);
+    void setPanX(double v);
+    void setPanY(double v);
 
-    Q_INVOKABLE void clear();
+    Q_INVOKABLE void    clear();
     Q_INVOKABLE QString fileName() const;
 
 signals:
@@ -59,6 +65,8 @@ signals:
     void boardChanged();
     void dirtyChanged();
     void pendingTapChanged();
+    void panXChanged();
+    void panYChanged();
 
 private:
     QSettings m_settings;

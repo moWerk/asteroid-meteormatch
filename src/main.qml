@@ -27,13 +27,12 @@ Application {
     outerColor:  "#0A0A14"
 
     // ── Save / load ───────────────────────────────────────────────────────────
-    // GameStorage is a C++ QSettings singleton — every write syncs to disk
-    // immediately, surviving power loss and hard kills.
-
     function saveResult() {
         GameStorage.dirty      = true
         GameStorage.board      = board.boardToJson()
         GameStorage.score      = board.score
+        GameStorage.panX       = board.panX
+        GameStorage.panY       = board.panY
         GameStorage.pendingTap = ""
         GameStorage.dirty      = false
     }
@@ -45,12 +44,16 @@ Application {
         var pending    = GameStorage.pendingTap
 
         if (dirty && savedBoard !== "" && pending !== "") {
+            // Power-loss recovery — replay last tap on pre-tap board
             board.score = savedScore
             board.loadBoard(savedBoard)
             var parts = pending.split(",")
             board.handleTap(parseInt(parts[0]), parseInt(parts[1]))
         } else if (savedBoard !== "") {
+            // Restore saved game including viewport position
             board.score = savedScore
+            board.panX  = GameStorage.panX
+            board.panY  = GameStorage.panY
             board.loadBoard(savedBoard)
         } else {
             board.initBoard()
@@ -71,18 +74,16 @@ Application {
 
         onBoardChanged: saveResult()
         onScoreDelta:   {}
-        // Write-ahead: persist dirty flag + tap coords before deaths start.
-        // If the app is killed mid-cascade, recovery in loadOrInit replays
-        // this tap against the last clean board state.
         onTapStarted: {
             GameStorage.dirty      = true
             GameStorage.pendingTap = col + "," + row
-            GameStorage.score      = board.score   // pre-tap score
+            GameStorage.score      = board.score
         }
         onGameOver: {
-            GameStorage.highScore = board.score   // setter ignores if not higher
+            GameStorage.highScore = board.score
             gameOverOverlay.visible = true
         }
+        onLongPressed: resetOverlay.visible = true
     }
     // ────────────────────────────────────────────────────────────────────────
 
@@ -98,6 +99,72 @@ Application {
         font.pixelSize: Dims.l(8)
         visible:        board.gameState !== "gameover"
         color:          "#E0E0E0"
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
+    // ── Reset overlay (long press) ────────────────────────────────────────────
+    Item {
+        id: resetOverlay
+        anchors.fill: parent
+        visible:      false
+
+        Rectangle {
+            anchors.fill: parent
+            color:        "#CC000000"
+        }
+
+        // Tap outside the button to dismiss
+        MouseArea {
+            anchors.fill: parent
+            onClicked:    resetOverlay.visible = false
+        }
+
+        Column {
+            anchors.centerIn: parent
+            spacing:          Dims.l(4)
+
+            Label {
+                anchors.horizontalCenter: parent.horizontalCenter
+                //% "Reset Board"
+                text:           qsTrId("id-reset-board")
+                font.pixelSize: Dims.l(9)
+                color:          "#E0E0E0"
+            }
+
+            Label {
+                anchors.horizontalCenter: parent.horizontalCenter
+                //% "Start a new game?"
+                text:           qsTrId("id-start-new-game")
+                font.pixelSize: Dims.l(6)
+                color:          "#888888"
+            }
+
+            // Confirm button — explicit tap required so accidental long press
+            // doesn't silently destroy progress
+            Rectangle {
+                anchors.horizontalCenter: parent.horizontalCenter
+                width:  Dims.w(55)
+                height: Dims.l(16)
+                radius: Dims.l(3)
+                color:  "#D55E00"
+
+                Label {
+                    anchors.centerIn: parent
+                    //% "New Game"
+                    text:           qsTrId("id-new-game")
+                    font.pixelSize: Dims.l(7)
+                    color:          "white"
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: {
+                        resetOverlay.visible = false
+                        newGame()
+                    }
+                }
+            }
+        }
     }
     // ────────────────────────────────────────────────────────────────────────
 

@@ -76,6 +76,16 @@ QString GameStorage::pendingTap() const
     return m_settings.value(QStringLiteral("pendingTap"), QString()).toString();
 }
 
+double GameStorage::panX() const
+{
+    return m_settings.value(QStringLiteral("panX"), 0.0).toDouble();
+}
+
+double GameStorage::panY() const
+{
+    return m_settings.value(QStringLiteral("panY"), 0.0).toDouble();
+}
+
 // ── Setters — QSettings::sync() called after every write ────────────────────
 // sync() flushes to disk immediately, safe against power loss.
 
@@ -120,15 +130,33 @@ QString GameStorage::fileName() const
     return m_settings.fileName();
 }
 
+void GameStorage::setPanX(double v)
+{
+    m_settings.setValue(QStringLiteral("panX"), v);
+    m_settings.sync();
+    emit panXChanged();
+}
+
+void GameStorage::setPanY(double v)
+{
+    m_settings.setValue(QStringLiteral("panY"), v);
+    m_settings.sync();
+    emit panYChanged();
+}
+
 void GameStorage::clear()
 {
     m_settings.setValue(QStringLiteral("board"),      QString());
     m_settings.setValue(QStringLiteral("score"),      0);
     m_settings.setValue(QStringLiteral("pendingTap"), QString());
     m_settings.setValue(QStringLiteral("dirty"),      false);
+    m_settings.setValue(QStringLiteral("panX"),       0.0);
+    m_settings.setValue(QStringLiteral("panY"),       0.0);
     m_settings.sync();
     emit boardChanged();
     emit scoreChanged();
     emit pendingTapChanged();
     emit dirtyChanged();
+    emit panXChanged();
+    emit panYChanged();
 }

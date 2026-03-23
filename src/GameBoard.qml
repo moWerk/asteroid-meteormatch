@@ -34,6 +34,7 @@ Item {
     // can write the write-ahead log (dirty=true, pendingTap=col,row).
     // The board in GameStorage at this point is the pre-tap state.
     signal tapStarted(int col, int row)
+    signal longPressed()   // long-press anywhere on board — triggers reset menu
     // ────────────────────────────────────────────────────────────────────────
 
     anchors.fill: parent
@@ -146,9 +147,17 @@ Item {
         repeat:   false
         onTriggered: {
             boardReady = true
-            if (!isRestoring)
+            if (!isRestoring) {
                 boardChanged()   // save fresh board; skip on restore to avoid redundant write
-                isRestoring = false
+            } else {
+                // After restoring a saved board, silently start fresh if no moves remain.
+                // A stuck saved board is an edge case — no game over overlay, just reset.
+                Qt.callLater(function() {
+                    if (!hasValidMoves())
+                        initBoard()
+                })
+            }
+            isRestoring = false
         }
     }
     // ────────────────────────────────────────────────────────────────────────
@@ -430,17 +439,24 @@ Item {
         checkGameOver()
     }
 
-    function checkGameOver() {
+    // Returns true if at least one valid move exists
+    function hasValidMoves() {
         for (var col = 0; col < cols; col++) {
             for (var row = 0; row < rows; row++) {
                 var t = cellType(col, row)
                 if (t < 0) continue
-                    if (cellType(col + 1, row) === t) return
-                        if (cellType(col,     row + 1) === t) return
+                    if (cellType(col + 1, row) === t) return true
+                        if (cellType(col,     row + 1) === t) return true
             }
         }
-        gameState = "gameover"
-        gameOver()
+        return false
+    }
+
+    function checkGameOver() {
+        if (!hasValidMoves()) {
+            gameState = "gameover"
+            gameOver()
+        }
     }
     // ────────────────────────────────────────────────────────────────────────
 
@@ -589,24 +605,26 @@ Item {
         property real pressY:    0
         property real pressPanX: 0
         property real pressPanY: 0
-        property bool tracking:  false
-        property real lastMX:    0
-        property real lastMY:    0
-        property real velX:      0
-        property real velY:      0
+        property bool tracking:       false
+        property bool longConsumed:   false   // set by onPressAndHold, blocks tap in onReleased
+        property real lastMX:         0
+        property real lastMY:         0
+        property real velX:           0
+        property real velY:           0
 
         readonly property real threshold: Dims.l(3)
 
         onPressed: {
-            pressX    = mouse.x
-            pressY    = mouse.y
-            pressPanX = panX
-            pressPanY = panY
-            lastMX    = mouse.x
-            lastMY    = mouse.y
-            velX      = 0
-            velY      = 0
-            tracking  = false
+            pressX       = mouse.x
+            pressY       = mouse.y
+            pressPanX    = panX
+            pressPanY    = panY
+            lastMX       = mouse.x
+            lastMY       = mouse.y
+            velX         = 0
+            velY         = 0
+            tracking     = false
+            longConsumed = false
         }
 
         onPositionChanged: {
@@ -631,7 +649,7 @@ Item {
         }
 
         onReleased: {
-            if (!tracking) {
+            if (!tracking && !longConsumed) {
                 var boardX = mouse.x - panX
                 var boardY = mouse.y - panY
                 handleTap(Math.floor(boardX / tileSize), Math.floor(boardY / tileSize))
@@ -650,6 +668,14 @@ Item {
             tracking        = false
             panning         = false
             preventStealing = false
+        }
+
+        onPressAndHold: {
+            // Only fire if finger hasn't drifted into a pan gesture
+            if (!tracking) {
+                longConsumed = true
+                gameBoard.longPressed()
+            }
         }
     }
     // ────────────────────────────────────────────────────────────────────────
