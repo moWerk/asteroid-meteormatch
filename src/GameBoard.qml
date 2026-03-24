@@ -1,3 +1,4 @@
+// GameBoard.qml
 /*
  * Copyright (C) 2026 - Timo Könnecke <github.com/moWerk>
  *
@@ -88,7 +89,7 @@ Item {
 
     function cellType(col, row) {
         if (col < 0 || col >= cols || row < 0 || row >= rows) return -1
-        return boardModel.get(boardIndex(col, row)).type
+            return boardModel.get(boardIndex(col, row)).type
     }
 
     function initBoard() {
@@ -101,10 +102,10 @@ Item {
         for (var i = 0; i < tileCount; i++)
             boardModel.append({
                 type: Math.floor(Math.random() * 3),
-                dying: false,
-                visualRow: Math.floor(i / cols)
+                              dying: false,
+                              visualRow: Math.floor(i / cols)
             })
-        readyTimer.restart()
+            readyTimer.restart()
     }
 
     function loadBoard(jsonStr) {
@@ -119,14 +120,14 @@ Item {
                 dying: false,
                 visualRow: Math.floor(i / cols)
             })
-        readyTimer.restart()
+            readyTimer.restart()
     }
 
     function boardToJson() {
         var arr = []
         for (var i = 0; i < tileCount; i++)
             arr.push(boardModel.get(i).type)
-        return JSON.stringify(arr)
+            return JSON.stringify(arr)
     }
 
     property bool isRestoring: false
@@ -179,15 +180,15 @@ Item {
 
     function floodStep(col, row, targetType, indices) {
         if (col < 0 || col >= cols || row < 0 || row >= rows) return
-        var idx = boardIndex(col, row)
-        if (floodVisited[idx]) return
-        if (boardModel.get(idx).type !== targetType) return
-        floodVisited[idx] = true
-        indices.push(idx)
-        floodStep(col + 1, row, targetType, indices)
-        floodStep(col - 1, row, targetType, indices)
-        floodStep(col, row + 1, targetType, indices)
-        floodStep(col, row - 1, targetType, indices)
+            var idx = boardIndex(col, row)
+            if (floodVisited[idx]) return
+                if (boardModel.get(idx).type !== targetType) return
+                    floodVisited[idx] = true
+                    indices.push(idx)
+                    floodStep(col + 1, row, targetType, indices)
+                    floodStep(col - 1, row, targetType, indices)
+                    floodStep(col, row + 1, targetType, indices)
+                    floodStep(col, row - 1, targetType, indices)
     }
 
     // Find cascadeType groups >= 3 containing at least one tile that moved during gravity.
@@ -201,25 +202,25 @@ Item {
             for (var row = 0; row < rows; row++) {
                 var idx = boardIndex(col, row)
                 if (visited[idx]) continue
-                if (cellType(col, row) !== cascadeType) continue
+                    if (cellType(col, row) !== cascadeType) continue
 
-                var groupIndices = []
-                var groupVisited = new Array(tileCount)
-                floodStepWith(col, row, cascadeType, groupIndices, groupVisited)
+                        var groupIndices = []
+                        var groupVisited = new Array(tileCount)
+                        floodStepWith(col, row, cascadeType, groupIndices, groupVisited)
 
-                for (var k = 0; k < groupIndices.length; k++)
-                    visited[groupIndices[k]] = true
+                        for (var k = 0; k < groupIndices.length; k++)
+                            visited[groupIndices[k]] = true
 
-                if (groupIndices.length >= 3) {
-                    var hasMoved = false
-                    for (var m = 0; m < groupIndices.length; m++) {
-                        if (movedSet[groupIndices[m]]) { hasMoved = true; break }
-                    }
-                    if (hasMoved) {
-                        for (var j = 0; j < groupIndices.length; j++)
-                            allIndices.push(groupIndices[j])
-                    }
-                }
+                            if (groupIndices.length >= 3) {
+                                var hasMoved = false
+                                for (var m = 0; m < groupIndices.length; m++) {
+                                    if (movedSet[groupIndices[m]]) { hasMoved = true; break }
+                                }
+                                if (hasMoved) {
+                                    for (var j = 0; j < groupIndices.length; j++)
+                                        allIndices.push(groupIndices[j])
+                                }
+                            }
             }
         }
         return allIndices
@@ -228,68 +229,141 @@ Item {
     // Like floodStep but uses its own visited array — for cascade scanning
     function floodStepWith(col, row, targetType, indices, visited) {
         if (col < 0 || col >= cols || row < 0 || row >= rows) return
-        var idx = boardIndex(col, row)
-        if (visited[idx]) return
-        if (boardModel.get(idx).type !== targetType) return
-        visited[idx] = true
-        indices.push(idx)
-        floodStepWith(col + 1, row, targetType, indices, visited)
-        floodStepWith(col - 1, row, targetType, indices, visited)
-        floodStepWith(col, row + 1, targetType, indices, visited)
-        floodStepWith(col, row - 1, targetType, indices, visited)
+            var idx = boardIndex(col, row)
+            if (visited[idx]) return
+                if (boardModel.get(idx).type !== targetType) return
+                    visited[idx] = true
+                    indices.push(idx)
+                    floodStepWith(col + 1, row, targetType, indices, visited)
+                    floodStepWith(col - 1, row, targetType, indices, visited)
+                    floodStepWith(col, row + 1, targetType, indices, visited)
+                    floodStepWith(col, row - 1, targetType, indices, visited)
     }
 
-    // ── Gravity
-    // Returns movedSet: hash-object { boardIndex: true } of every tile that changed position.
-    // Used by findCascadeIndices to gate cascade eligibility.
-    function applyGravity() {
+    // ── Gravity — pure computation, no model changes
+    // Returns { moves, movedSet }.
+    // moves: array of { col, sourceRow, destRow, destIdx, sourceIdx, type }
+    // movedSet: hash { boardIndex: true } for every destination that received a tile
+    function computeVerticalMoves() {
+        var moves = []
         var movedSet = {}
-
         for (var col = 0; col < cols; col++) {
             var writeRow = rows - 1
             for (var row = rows - 1; row >= 0; row--) {
                 var t = cellType(col, row)
                 if (t >= 0) {
                     if (writeRow !== row) {
-                        boardModel.setProperty(boardIndex(col, writeRow), "type", t)
-                        boardModel.setProperty(boardIndex(col, writeRow), "visualRow", writeRow)
-                        boardModel.setProperty(boardIndex(col, row), "type", -1)
-                        boardModel.setProperty(boardIndex(col, row), "visualRow", row)
+                        moves.push({
+                            col:       col,
+                            sourceRow: row,
+                            destRow:   writeRow,
+                            destIdx:   boardIndex(col, writeRow),
+                                   sourceIdx: boardIndex(col, row),
+                                   type:      t
+                        })
                         movedSet[boardIndex(col, writeRow)] = true
                     }
                     writeRow--
                 }
             }
-            for (var r = writeRow; r >= 0; r--) {
-                boardModel.setProperty(boardIndex(col, r), "type", -1)
-                boardModel.setProperty(boardIndex(col, r), "visualRow", r)
-            }
         }
-
-        collapseColumns(movedSet)
-        return movedSet
+        return { moves: moves, movedSet: movedSet }
     }
 
-    function collapseColumns(movedSet) {
+    // Horizontal column compaction — runs instantly after gravity animation completes.
+    // movedSet updated in place so cascade detection reflects correct final indices.
+    function applyColumnCollapse(movedSet) {
         var writeCol = 0
         for (var col = 0; col < cols; col++) {
             if (cellType(col, rows - 1) >= 0) {
                 if (writeCol !== col) {
                     for (var row = 0; row < rows; row++) {
                         var t = cellType(col, row)
-                        // Only propagate moved status if tile already moved via gravity.
-                        // Pure horizontal compaction must never trigger cascades.
                         if (t >= 0 && movedSet[boardIndex(col, row)])
                             movedSet[boardIndex(writeCol, row)] = true
-                        delete movedSet[boardIndex(col, row)]
-                        boardModel.setProperty(boardIndex(writeCol, row), "type", t)
-                        boardModel.setProperty(boardIndex(writeCol, row), "visualRow", row)
-                        boardModel.setProperty(boardIndex(col, row), "type", -1)
-                        boardModel.setProperty(boardIndex(col, row), "visualRow", row)
+                            delete movedSet[boardIndex(col, row)]
+                            boardModel.setProperty(boardIndex(writeCol, row), "type", t)
+                            boardModel.setProperty(boardIndex(writeCol, row), "visualRow", row)
+                            boardModel.setProperty(boardIndex(col, row), "type", -1)
+                            boardModel.setProperty(boardIndex(col, row), "visualRow", row)
                     }
                 }
                 writeCol++
             }
+        }
+    }
+
+    // ── Gravity animation state
+    // gravityActive: true from startGravityAnimation until afterGravityComplete —
+    //   blocks input for the full gravity + column collapse window.
+    // gravityBehavior: true only during the animated fall window —
+    //   gates the Behavior on y in the delegate so pre-positioning is always instant.
+    property bool gravityActive: false
+    property bool gravityBehavior: false
+
+    readonly property int gravityStaggerMs: 25   // delay per column — wave left-to-right
+    readonly property int gravityAnimMs: 220      // fall duration per tile
+
+    property var pendingMoves: []
+    property var pendingMovedSet: ({})
+
+    // Phase 1 — pre-position + type swap (Behavior disabled).
+    // gravityKickTimer separates this from phase 2 so the renderer
+    // paints the pre-positioned state before the Behavior fires.
+    function startGravityAnimation() {
+        var result = computeVerticalMoves()
+        pendingMovedSet = result.movedSet
+
+        if (result.moves.length === 0) {
+            // Nothing fell — collapse columns instantly and move on
+            applyColumnCollapse(pendingMovedSet)
+            afterGravityComplete()
+            return
+        }
+
+        pendingMoves = result.moves
+        gravityActive = true
+        gravityBehavior = false
+
+        // Pre-position each destination tile at the source row so it
+        // appears there the moment it becomes visible (type swap below).
+        for (var i = 0; i < pendingMoves.length; i++)
+            boardModel.setProperty(pendingMoves[i].destIdx, "visualRow", pendingMoves[i].sourceRow)
+
+            // Swap types — destination becomes visible at source row, source disappears.
+            // Batched with pre-position in same JS execution so delegate sees both together.
+            for (var i = 0; i < pendingMoves.length; i++) {
+                boardModel.setProperty(pendingMoves[i].destIdx, "type", pendingMoves[i].type)
+                boardModel.setProperty(pendingMoves[i].sourceIdx, "type", -1)
+            }
+
+            gravityKickTimer.restart()
+    }
+
+    // Phase 2 — enable Behavior and push all visualRows to destination.
+    // Fires one frame after phase 1 so the renderer has painted the starting positions.
+    Timer {
+        id: gravityKickTimer
+        interval: 32
+        repeat: false
+        onTriggered: {
+            gravityBehavior = true
+            for (var i = 0; i < pendingMoves.length; i++)
+                boardModel.setProperty(pendingMoves[i].destIdx, "visualRow", pendingMoves[i].destRow)
+                // Total animation window: last column finishes at (cols-1)*stagger + animDuration
+                gravityCompleteTimer.interval = (cols - 1) * gravityStaggerMs + gravityAnimMs
+                gravityCompleteTimer.restart()
+        }
+    }
+
+    // Gravity done — disable Behavior, apply instant column collapse, check cascades.
+    Timer {
+        id: gravityCompleteTimer
+        repeat: false
+        onTriggered: {
+            gravityBehavior = false
+            applyColumnCollapse(pendingMovedSet)
+            afterGravityComplete()
         }
     }
 
@@ -299,14 +373,13 @@ Item {
     property var lastResult: null
     property bool isInitialTap: false     // true for first wave, false for cascade waves
 
-    // ── Death wave — single entry point for initial tap and cascade waves
+    // ── Death wave — zoom out first so the player sees what happens,
+    //    then start deaths.
     function startDeathWave(indices) {
         pendingDeaths = indices.length
-        // Deaths (gold) start immediately for instant user feedback
-        executePendingDeaths(indices)
-        // Zoom cut after — deaths keep playing during the instant reposition
         var outside = isAnyOutsideViewport(indices)
         if (outside && !zoomedOut) triggerZoomOut()
+            executePendingDeaths(indices)
     }
 
     function executePendingDeaths(indices) {
@@ -318,15 +391,24 @@ Item {
         pendingDeaths--
         if (pendingDeaths > 0) return
 
-        var result = lastResult
-        for (var i = 0; i < result.indices.length; i++) {
-            boardModel.setProperty(result.indices[i], "type", -1)
-            boardModel.setProperty(result.indices[i], "dying", false)
-        }
+            // Clear all dead tiles from the model, then animate gravity.
+            var result = lastResult
+            for (var i = 0; i < result.indices.length; i++) {
+                boardModel.setProperty(result.indices[i], "type", -1)
+                boardModel.setProperty(result.indices[i], "dying", false)
+            }
 
-        var movedSet = applyGravity()
+            startGravityAnimation()
+    }
+
+    // Called after gravity animation + column collapse complete.
+    function afterGravityComplete() {
+        gravityActive = false
+
         // 2-tile matches never trigger cascades — cascade blocking is the only malus
-        var cascadeIndices = isInitialTap && result.count === 2 ? [] : findCascadeIndices(movedSet)
+        var cascadeIndices = isInitialTap && lastResult.count === 2
+        ? []
+        : findCascadeIndices(pendingMovedSet)
 
         if (cascadeIndices.length >= 3) {
             var delta = (cascadeIndices.length - 1) * (cascadeIndices.length - 1)
@@ -339,7 +421,7 @@ Item {
             cascadeType = -1
             isInitialTap = false
             if (zoomedOut) triggerZoomIn()
-            finalizeTurn()
+                finalizeTurn()
         }
     }
 
@@ -353,8 +435,8 @@ Item {
             for (var row = 0; row < rows; row++) {
                 var t = cellType(col, row)
                 if (t < 0) continue
-                if (cellType(col + 1, row) === t) return true
-                if (cellType(col, row + 1) === t) return true
+                    if (cellType(col + 1, row) === t) return true
+                        if (cellType(col, row + 1) === t) return true
             }
         }
         return false
@@ -381,27 +463,27 @@ Item {
     // ── Tap handler
     function handleTap(col, row) {
         if (gameState !== "playing") return
-        var result = floodFill(col, row)
-        if (result.count < 2) return
+            var result = floodFill(col, row)
+            if (result.count < 2) return
 
-        // Save viewport position at tap time — always the zoom-in return point
-        prePanX = panX
-        prePanY = panY
+                // Save viewport position at tap time — always the zoom-in return point
+                prePanX = panX
+                prePanY = panY
 
-        cascadeType = result.type
-        isInitialTap = true
-        lastResult = result
+                cascadeType = result.type
+                isInitialTap = true
+                lastResult = result
 
-        // Write-ahead: signal BEFORE any deaths so main.qml can persist
-        // dirty=true + pendingTap. If the app dies mid-cascade, recovery
-        // replays this tap against the last clean board in GameStorage.
-        tapStarted(col, row)
+                // Write-ahead: signal BEFORE any deaths so main.qml can persist
+                // dirty=true + pendingTap. If the app dies mid-cascade, recovery
+                // replays this tap against the last clean board in GameStorage.
+                tapStarted(col, row)
 
-        var delta = (result.count - 1) * (result.count - 1)
-        score += delta
-        scoreDelta(delta)
+                var delta = (result.count - 1) * (result.count - 1)
+                score += delta
+                scoreDelta(delta)
 
-        startDeathWave(result.indices)
+                startDeathWave(result.indices)
     }
 
     // ── Zoom — instant cuts, animation-ready hooks preserved via zooming flag
@@ -447,6 +529,11 @@ Item {
                 model: boardModel
 
                 delegate: Tile {
+                    id: tileDelegate
+
+                    // Column captured here — used by the stagger PauseAnimation below.
+                    readonly property int tileCol: index % cols
+
                     tileType: model.type < 0 ? 0 : model.type
                     dying: model.dying
                     visible: model.type >= 0
@@ -454,6 +541,23 @@ Item {
                     height: tileSize
                     x: (index % cols) * tileSize
                     y: model.visualRow * tileSize
+
+                    // Behavior disabled during pre-positioning (gravityBehavior = false)
+                    // so the initial visualRow = sourceRow assignment is always instant.
+                    // Enabled only while the fall animation is running.
+                    Behavior on y {
+                        enabled: gameBoard.gravityBehavior
+                        SequentialAnimation {
+                            // Left columns start first — wave sweeps left to right.
+                            PauseAnimation {
+                                duration: tileDelegate.tileCol * gameBoard.gravityStaggerMs
+                            }
+                            NumberAnimation {
+                                duration: gameBoard.gravityAnimMs
+                                easing.type: Easing.InQuad
+                            }
+                        }
+                    }
 
                     onDeathComplete: gameBoard.onTileDied()
                 }
@@ -464,7 +568,8 @@ Item {
     // ── Pan / tap input
     MouseArea {
         anchors.fill: viewport
-        enabled: gameState === "playing" && pendingDeaths === 0
+        // Block input during deaths, gravity animation, and the kick-timer window
+        enabled: gameState === "playing" && pendingDeaths === 0 && !gravityActive
 
         property real pressX: 0
         property real pressY: 0
@@ -498,9 +603,9 @@ Item {
 
             if (!tracking) {
                 if (Math.sqrt(dx * dx + dy * dy) < threshold) return
-                tracking = true
-                panning = true
-                preventStealing = true
+                    tracking = true
+                    panning = true
+                    preventStealing = true
             }
 
             velX = (mouse.x - lastMX) * 0.5 + velX * 0.5
