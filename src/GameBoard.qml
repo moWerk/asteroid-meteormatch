@@ -278,7 +278,7 @@ Item {
     // Tiles that also shift left via collapseColumns lose the fall animation for
     // that move — they appear at the new column instantly. Y-fall animation is
     // the visually important one.
-    function applyGravity(doRefill, refillIndices) {
+    function applyGravity() {
         var movedSet = {}
 
         for (var col = 0; col < cols; col++) {
@@ -302,9 +302,8 @@ Item {
             }
         }
 
-        if (doRefill) refillPenalty(refillIndices)
-            collapseColumns(movedSet)
-            return movedSet
+        collapseColumns(movedSet)
+        return movedSet
     }
 
     function collapseColumns(movedSet) {
@@ -330,28 +329,6 @@ Item {
         }
     }
 
-    function refillPenalty(indices) {
-        var affectedCols = []
-        for (var i = 0; i < indices.length; i++) {
-            var c = indices[i] % cols
-            if (affectedCols.indexOf(c) < 0)
-                affectedCols.push(c)
-        }
-        var targetCols = affectedCols.slice(0, 2)
-        for (var j = 0; j < targetCols.length; j++) {
-            var col = targetCols[j]
-            for (var row = 0; row < rows; row++) {
-                if (cellType(col, row) < 0) {
-                    var lowerType = cellType(col, row + 1)
-                    var newType
-                    do { newType = Math.floor(Math.random() * 3) } while (newType === lowerType)
-                        boardModel.setProperty(boardIndex(col, row), "type",      newType)
-                        boardModel.setProperty(boardIndex(col, row), "visualRow", row)
-                        break
-                }
-            }
-        }
-    }
     // ────────────────────────────────────────────────────────────────────────
 
     // ── Cascade state ─────────────────────────────────────────────────────────
@@ -393,10 +370,10 @@ Item {
 
             // Gravity — refill only on initial 2-tile tap, never on cascade waves
             var isTwoPenalty = isInitialTap && result.count === 2
-            var movedSet = applyGravity(isTwoPenalty, result.indices)
+            var movedSet      = applyGravity()
 
             // 2-tile penalty taps never trigger cascades — they are junk moves
-            var cascadeIndices = isTwoPenalty ? [] : findCascadeIndices(movedSet)
+            var cascadeIndices = isInitialTap && result.count === 2 ? [] : findCascadeIndices(movedSet)
             if (cascadeIndices.length >= 3) {
                 // Continue cascade — score for this wave, start next death wave
                 var delta = (cascadeIndices.length - 1) * (cascadeIndices.length - 1)
