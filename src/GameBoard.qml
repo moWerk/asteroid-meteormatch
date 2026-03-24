@@ -524,6 +524,24 @@ Item {
             y: panY
             scale: zoomScale
 
+            Behavior on x {
+                enabled: !panning && !zooming
+                NumberAnimation {
+                    duration: 380
+                    easing.type: Easing.OutBack
+                    easing.overshoot: 0.8
+                }
+            }
+
+            Behavior on y {
+                enabled: !panning && !zooming
+                NumberAnimation {
+                    duration: 380
+                    easing.type: Easing.OutBack
+                    easing.overshoot: 0.8
+                }
+            }
+
             Repeater {
                 id: tilesRepeater
                 model: boardModel
