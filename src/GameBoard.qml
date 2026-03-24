@@ -372,14 +372,19 @@ Item {
     property int pendingDeaths: 0
     property var lastResult: null
     property bool isInitialTap: false     // true for first wave, false for cascade waves
+    property var pendingDeathIndices: []
 
     // ── Death wave — zoom out first so the player sees what happens,
     //    then start deaths.
     function startDeathWave(indices) {
         pendingDeaths = indices.length
         var outside = isAnyOutsideViewport(indices)
-        if (outside && !zoomedOut) triggerZoomOut()
+        if (outside && !zoomedOut) {
+            pendingDeathIndices = indices
+            triggerZoomOut()
+        } else {
             executePendingDeaths(indices)
+        }
     }
 
     function executePendingDeaths(indices) {
@@ -489,22 +494,37 @@ Item {
     // ── Zoom — instant cuts, animation-ready hooks preserved via zooming flag
     property real zoomScale: 1.0
 
+    ParallelAnimation {
+        id: zoomOutAnim
+        NumberAnimation { target: gameBoard; property: "zoomScale"; to: zoomScale_target; duration: 320; easing.type: Easing.OutQuart }
+        NumberAnimation { target: gameBoard; property: "panX";      to: centeredPanX;    duration: 320; easing.type: Easing.OutQuart }
+        NumberAnimation { target: gameBoard; property: "panY";      to: centeredPanY;    duration: 320; easing.type: Easing.OutQuart }
+        onStopped: {
+            zoomedOut = true
+            zooming = false
+            executePendingDeaths(pendingDeathIndices)
+        }
+    }
+
+    ParallelAnimation {
+        id: zoomInAnim
+        NumberAnimation { target: gameBoard; property: "zoomScale"; to: 1.0;     duration: 320; easing.type: Easing.InOutQuad }
+        NumberAnimation { target: gameBoard; property: "panX";      to: prePanX; duration: 320; easing.type: Easing.InOutQuad }
+        NumberAnimation { target: gameBoard; property: "panY";      to: prePanY; duration: 320; easing.type: Easing.InOutQuad }
+        onStopped: {
+            zoomedOut = false
+            zooming = false
+        }
+    }
+
     function triggerZoomOut() {
         zooming = true
-        zoomScale = zoomScale_target
-        panX = centeredPanX
-        panY = centeredPanY
-        zoomedOut = true
-        Qt.callLater(function() { zooming = false })
+        zoomOutAnim.restart()
     }
 
     function triggerZoomIn() {
         zooming = true
-        zoomScale = 1.0
-        panX = prePanX
-        panY = prePanY
-        zoomedOut = false
-        Qt.callLater(function() { zooming = false })
+        zoomInAnim.restart()
     }
 
     // ── Viewport
@@ -587,7 +607,7 @@ Item {
     MouseArea {
         anchors.fill: viewport
         // Block input during deaths, gravity animation, and the kick-timer window
-        enabled: gameState === "playing" && pendingDeaths === 0 && !gravityActive
+        enabled: gameState === "playing" && pendingDeaths === 0 && !gravityActive && !zooming
 
         property real pressX: 0
         property real pressY: 0
