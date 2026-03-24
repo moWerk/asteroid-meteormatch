@@ -102,10 +102,11 @@ Item {
         for (var i = 0; i < tileCount; i++)
             boardModel.append({
                 type: Math.floor(Math.random() * 3),
-                              dying: false,
-                              visualRow: Math.floor(i / cols)
+                dying: false,
+                visualRow: Math.floor(i / cols),
+                visualCol: i % cols
             })
-            readyTimer.restart()
+        readyTimer.restart()
     }
 
     function loadBoard(jsonStr) {
@@ -118,9 +119,10 @@ Item {
             boardModel.append({
                 type: arr[i],
                 dying: false,
-                visualRow: Math.floor(i / cols)
+                visualRow: Math.floor(i / cols),
+                visualCol: i % cols
             })
-            readyTimer.restart()
+        readyTimer.restart()
     }
 
     function boardToJson() {
@@ -272,25 +274,57 @@ Item {
 
     // Horizontal column compaction — runs instantly after gravity animation completes.
     // movedSet updated in place so cascade detection reflects correct final indices.
-    function applyColumnCollapse(movedSet) {
+    // Pure column move computation + movedSet update.
+    // Side-effect: updates pendingMovedSet in place for cascade detection.
+    function computeColumnMoves() {
+        var moves = []
         var writeCol = 0
         for (var col = 0; col < cols; col++) {
             if (cellType(col, rows - 1) >= 0) {
                 if (writeCol !== col) {
                     for (var row = 0; row < rows; row++) {
                         var t = cellType(col, row)
-                        if (t >= 0 && movedSet[boardIndex(col, row)])
-                            movedSet[boardIndex(writeCol, row)] = true
-                            delete movedSet[boardIndex(col, row)]
-                            boardModel.setProperty(boardIndex(writeCol, row), "type", t)
-                            boardModel.setProperty(boardIndex(writeCol, row), "visualRow", row)
-                            boardModel.setProperty(boardIndex(col, row), "type", -1)
-                            boardModel.setProperty(boardIndex(col, row), "visualRow", row)
+                        if (t >= 0 && pendingMovedSet[boardIndex(col, row)])
+                            pendingMovedSet[boardIndex(writeCol, row)] = true
+                        delete pendingMovedSet[boardIndex(col, row)]
+                        if (t >= 0) {
+                            moves.push({
+                                sourceCol: col,
+                                destCol:   writeCol,
+                                row:       row,
+                                sourceIdx: boardIndex(col, row),
+                                destIdx:   boardIndex(writeCol, row),
+                                type:      t
+                            })
+                        }
                     }
                 }
                 writeCol++
             }
         }
+        return moves
+    }
+
+    function startCollapseAnimation() {
+        var moves = computeColumnMoves()
+
+        if (moves.length === 0) {
+            afterGravityComplete()
+            return
+        }
+
+        collapseBehavior = false
+        pendingColMoves = moves
+
+        // Pre-position: destination tiles appear at source column, source becomes empty.
+        for (var i = 0; i < moves.length; i++) {
+            boardModel.setProperty(moves[i].destIdx, "visualCol", moves[i].sourceCol)
+            boardModel.setProperty(moves[i].destIdx, "type",      moves[i].type)
+            boardModel.setProperty(moves[i].sourceIdx, "type",    -1)
+            boardModel.setProperty(moves[i].sourceIdx, "visualCol", moves[i].sourceCol)
+        }
+
+        collapseKickTimer.restart()
     }
 
     // ── Gravity animation state
@@ -300,12 +334,15 @@ Item {
     //   gates the Behavior on y in the delegate so pre-positioning is always instant.
     property bool gravityActive: false
     property bool gravityBehavior: false
+    property bool collapseBehavior: false
 
     readonly property int gravityStaggerMs: 25   // delay per column — wave left-to-right
     readonly property int gravityAnimMs: 220      // fall duration per tile
+    readonly property int collapseAnimMs: 200
 
     property var pendingMoves: []
     property var pendingMovedSet: ({})
+    property var pendingColMoves: []
 
     // Phase 1 — pre-position + type swap (Behavior disabled).
     // gravityKickTimer separates this from phase 2 so the renderer
@@ -313,25 +350,19 @@ Item {
     function startGravityAnimation() {
         var result = computeVerticalMoves()
         pendingMovedSet = result.movedSet
+        gravityActive = true
 
         if (result.moves.length === 0) {
-            // Nothing fell — collapse columns instantly and move on
-            applyColumnCollapse(pendingMovedSet)
-            afterGravityComplete()
+            startCollapseAnimation()
             return
         }
 
         pendingMoves = result.moves
-        gravityActive = true
         gravityBehavior = false
 
-        // Pre-position each destination tile at the source row so it
-        // appears there the moment it becomes visible (type swap below).
         for (var i = 0; i < pendingMoves.length; i++)
             boardModel.setProperty(pendingMoves[i].destIdx, "visualRow", pendingMoves[i].sourceRow)
 
-            // Swap types — destination becomes visible at source row, source disappears.
-            // Batched with pre-position in same JS execution so delegate sees both together.
             for (var i = 0; i < pendingMoves.length; i++) {
                 boardModel.setProperty(pendingMoves[i].destIdx, "type", pendingMoves[i].type)
                 boardModel.setProperty(pendingMoves[i].sourceIdx, "type", -1)
@@ -362,7 +393,28 @@ Item {
         repeat: false
         onTriggered: {
             gravityBehavior = false
-            applyColumnCollapse(pendingMovedSet)
+            startCollapseAnimation()
+        }
+    }
+
+    Timer {
+        id: collapseKickTimer
+        interval: 32
+        repeat: false
+        onTriggered: {
+            collapseBehavior = true
+            for (var i = 0; i < pendingColMoves.length; i++)
+                boardModel.setProperty(pendingColMoves[i].destIdx, "visualCol", pendingColMoves[i].destCol)
+                collapseCompleteTimer.interval = collapseAnimMs
+                collapseCompleteTimer.restart()
+        }
+    }
+
+    Timer {
+        id: collapseCompleteTimer
+        repeat: false
+        onTriggered: {
+            collapseBehavior = false
             afterGravityComplete()
         }
     }
@@ -577,18 +629,23 @@ Item {
                     visible: model.type >= 0
                     width: tileSize
                     height: tileSize
-                    x: (index % cols) * tileSize
+                    x: model.visualCol * tileSize
                     y: model.visualRow * tileSize
 
-                    // Behavior disabled during pre-positioning (gravityBehavior = false)
-                    // so the initial visualRow = sourceRow assignment is always instant.
-                    // Enabled only while the fall animation is running.
+                    Behavior on x {
+                        enabled: gameBoard.collapseBehavior
+                        NumberAnimation {
+                            duration: gameBoard.collapseAnimMs
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+
                     Behavior on y {
                         enabled: gameBoard.gravityBehavior
                         SequentialAnimation {
                             // Left columns start first — wave sweeps left to right.
                             PauseAnimation {
-                                duration: tileDelegate.tileCol * gameBoard.gravityStaggerMs
+                                duration: Math.max(0, tileDelegate.tileCol * gameBoard.gravityStaggerMs)
                             }
                             NumberAnimation {
                                 duration: gameBoard.gravityAnimMs
