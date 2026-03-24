@@ -52,11 +52,9 @@ Item {
         duration:    520
         running:     false
         easing.type: Easing.InCubic
-        onRunningChanged: {
-            if (!running && tile.dying)
-                tile.deathComplete()
-        }
+        onStopped: tile.deathComplete()
     }
+
     // ────────────────────────────────────────────────────────────────────────
 
     // ── Tile body ────────────────────────────────────────────────────────────
@@ -168,7 +166,10 @@ Item {
     onDyingChanged: {
         if (dying) {
             deathProgress = 0.0
-            deathAnim.start()
+            deathAnim.restart()
+        } else {
+            deathAnim.stop()
+            deathProgress = 0.0
         }
     }
     // ────────────────────────────────────────────────────────────────────────
