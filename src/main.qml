@@ -81,8 +81,16 @@ Application {
             GameStorage.score      = board.score
         }
         onGameOver: {
-            GameStorage.highScore = board.score
-            gameOverOverlay.visible = true
+            if (board.score > GameStorage.highScore)
+                GameStorage.highScore = board.score
+                gameOverOverlay.won     = false
+                gameOverOverlay.visible = true
+        }
+        onGameWon: {
+            if (board.score > GameStorage.highScore)
+                GameStorage.highScore = board.score
+                gameOverOverlay.won     = true
+                gameOverOverlay.visible = true
         }
         onLongPressed: resetOverlay.visible = true
     }
@@ -174,6 +182,7 @@ Application {
         id: gameOverOverlay
         anchors.fill: parent
         visible:      false
+        property bool won: false
 
         Rectangle {
             anchors.fill: parent
@@ -186,8 +195,10 @@ Application {
 
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
-                //% "Game Over"
-                text:           qsTrId("id-game-over")
+                //% "You Won!"
+                text: gameOverOverlay.won ? qsTrId("id-you-won")
+                //% "Game Over!"
+                : qsTrId("id-game-over")
                 font.pixelSize: Dims.l(10)
             }
 

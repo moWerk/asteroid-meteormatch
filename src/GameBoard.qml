@@ -29,6 +29,7 @@ Item {
 
     signal scoreDelta(int delta)
     signal gameOver()
+    signal gameWon()
     signal boardChanged()
     // Emitted at the START of a move — before any deaths — so main.qml
     // can write the write-ahead log (dirty=true, pendingTap=col,row).
@@ -411,11 +412,23 @@ Item {
     }
 
     function checkGameOver() {
+        // Check for win first — board fully cleared
+        var empty = true
+        for (var i = 0; i < tileCount; i++) {
+            if (boardModel.get(i).type >= 0) { empty = false; break }
+        }
+        if (empty) {
+            score    += 100
+            gameState = "gameover"
+            gameWon()
+            return
+        }
         if (!hasValidMoves()) {
             gameState = "gameover"
             gameOver()
         }
     }
+
     // ────────────────────────────────────────────────────────────────────────
 
     // ── Tap handler ───────────────────────────────────────────────────────────
