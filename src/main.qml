@@ -51,10 +51,11 @@ Application {
             board.handleTap(parseInt(parts[0]), parseInt(parts[1]))
         } else if (savedBoard !== "") {
             // Restore saved game including viewport position
-            board.score = savedScore
-            board.panX  = GameStorage.panX
-            board.panY  = GameStorage.panY
-            board.loadBoard(savedBoard)
+            board.score   = savedScore
+            board.panning = true        // suppress pan spring while placing saved pan values
+            board.panX    = GameStorage.panX
+            board.panY    = GameStorage.panY
+            board.loadBoard(savedBoard) // loadBoard also sets panning=true; readyTimer clears it
         } else {
             board.initBoard()
         }

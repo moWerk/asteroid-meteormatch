@@ -23,17 +23,12 @@ Item {
     id: tile
 
     // ── Public interface ─────────────────────────────────────────────────────
-    property int  tileType: 0
-    property bool dying:    false
+    property int  tileType:  0
+    property bool dying:     false
     signal deathComplete()
     // ────────────────────────────────────────────────────────────────────────
 
-    // SpringAnimation on y — fires when model.visualRow * tileSize changes
-    Behavior on y {
-        SpringAnimation { spring: 2.2; damping: 0.26 }
-    }
-
-    // ── Wong palette — colorblind safe ───────────────────────────────────────
+     // ── Wong palette — colorblind safe ───────────────────────────────────────
     // 0 = vermillion, 1 = sky blue, 2 = bluish green
     readonly property var typeColors: [
         "#D55E00",
@@ -47,15 +42,47 @@ Item {
     ]
     // ────────────────────────────────────────────────────────────────────────
 
+    // ── Death animation progress (0 = alive, 1 = fully gone) ─────────────────
+    property real deathProgress: 0.0
+
+    NumberAnimation on deathProgress {
+        id:          deathAnim
+        from:        0.0
+        to:          1.0
+        duration:    520
+        running:     false
+        easing.type: Easing.InCubic
+        onRunningChanged: {
+            if (!running && tile.dying)
+                tile.deathComplete()
+        }
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     // ── Tile body ────────────────────────────────────────────────────────────
     Rectangle {
         id: body
         anchors.fill:    parent
         anchors.margins: Dims.l(1)
         radius:          Dims.l(2)
-        color:           typeColors[tileType]
-        opacity:         dying ? 0.0 : 1.0
-        Behavior on opacity { NumberAnimation { duration: 180 } }
+
+        // Flash gold as death begins, then fade to transparent
+        // deathProgress 0.0 → 0.25: lerp from typeColor to gold
+        // deathProgress 0.25 → 1.0: fade out
+        color: {
+            if (!dying) return typeColors[tileType]
+                if (deathProgress < 0.25) {
+                    var t = deathProgress / 0.25
+                    return Qt.rgba(
+                        (1 - t) * (tileType === 0 ? 0.835 : tileType === 1 ? 0.337 : 0.0)   + t * 1.0,
+                                   (1 - t) * (tileType === 0 ? 0.369 : tileType === 1 ? 0.706 : 0.620) + t * 0.84,
+                                   (1 - t) * (tileType === 0 ? 0.0   : tileType === 1 ? 0.914 : 0.451) + t * 0.0,
+                                   1.0)
+                }
+                return "#FFD700"
+        }
+
+        opacity: dying ? Math.max(0, 1.0 - (deathProgress - 0.2) / 0.8) : 1.0
 
         // Top-left highlight
         Rectangle {
@@ -78,35 +105,24 @@ Item {
     }
     // ────────────────────────────────────────────────────────────────────────
 
-    // ── Death puff ShaderEffect ───────────────────────────────────────────────
-    // NOTE: "time" is a reserved Qt 5 ShaderEffect built-in — use "animTime"
+    // ── Gold shimmer ShaderEffect ─────────────────────────────────────────────
+    // Radial shimmer that blooms outward as the tile goes gold, then fades.
+    // Uses animTime (not "time" — reserved Qt 5 built-in).
     ShaderEffect {
-        id: puff
+        id: shimmer
 
-        property real animTime: 0.0   // NOT "time" — that name is reserved by Qt 5
-        property real puffR: tileType === 0 ? 0.835 : tileType === 1 ? 0.337 : 0.0
-        property real puffG: tileType === 0 ? 0.369 : tileType === 1 ? 0.706 : 0.620
-        property real puffB: tileType === 0 ? 0.0   : tileType === 1 ? 0.914 : 0.451
+        property real animTime: deathProgress
+        property real shimmerR: 1.0
+        property real shimmerG: 0.84
+        property real shimmerB: 0.0
 
-        width:  tile.width  * 1.6
-        height: tile.height * 1.6
+        width:  tile.width  * 2.2
+        height: tile.height * 2.2
         anchors.centerIn: parent
-        visible: dying
-        opacity: 1.0 - animTime
 
-        NumberAnimation on animTime {
-            id:          puffAnim
-            from:        0.0
-            to:          1.0
-            duration:    380
-            running:     false
-            easing.type: Easing.Linear
-            onRunningChanged: {
-                if (!running && tile.dying) {
-                    tile.deathComplete()
-                }
-            }
-        }
+        // Visible from death start, fades with body
+        visible: dying
+        opacity: dying ? Math.max(0, 0.85 - deathProgress * 1.1) : 0.0
 
         vertexShader: "
         uniform   highp mat4 qt_Matrix;
@@ -122,45 +138,27 @@ Item {
     fragmentShader: "
     varying highp vec2  coord;
     uniform highp float animTime;
-    uniform highp float puffR;
-    uniform highp float puffG;
-    uniform highp float puffB;
+    uniform highp float shimmerR;
+    uniform highp float shimmerG;
+    uniform highp float shimmerB;
     uniform highp float qt_Opacity;
 
-    highp float noise(highp vec2 p) {
-    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-    }
-
     void main() {
-    highp vec3  puffColor = vec3(puffR, puffG, puffB);
-    highp vec2  uv   = coord - vec2(0.5);
-    highp float fade = 1.0 - animTime;
-    highp vec3  color = vec3(0.0);
-    highp float alpha = 0.0;
+    highp vec2  uv    = coord - vec2(0.5);
+    highp float dist  = length(uv);
+    highp vec3  gold  = vec3(shimmerR, shimmerG, shimmerB);
 
-    for (int i = 0; i < 10; i++) {
-        highp float fi    = float(i);
-        highp float angle = fi * 0.6283 + noise(vec2(fi, 0.0)) * 0.5;
-        highp float speed = 0.6 + noise(vec2(fi, 1.0)) * 0.4;
-        highp vec2  pos   = vec2(cos(angle), sin(angle)) * speed * animTime * 0.45;
-        highp float d     = length(uv - pos);
-        highp float r     = 0.055 * (1.0 - animTime * 0.5);
-        if (d < r) {
-            highp float i2 = 1.0 - d / r;
-            color += mix(vec3(1.0), puffColor, animTime) * i2 * fade;
-            alpha += i2 * fade;
-    }
-    }
+    // Expanding ring — radius grows with animTime
+    highp float ring  = animTime * 0.48;
+    highp float width = 0.06 + animTime * 0.04;
+    highp float d     = abs(dist - ring);
+    highp float ring_a = max(0.0, 1.0 - d / width);
 
-    highp float core = length(uv) * (1.0 + animTime * 3.0);
-    if (core < 0.18) {
-        highp float ci = 1.0 - core / 0.18;
-        color += vec3(1.0) * ci * fade * 0.7;
-        alpha += ci * fade * 0.7;
-    }
+    // Soft radial glow at center, strongest early
+    highp float glow  = max(0.0, 0.3 - dist * 1.8) * (1.0 - animTime * 0.8);
 
-    gl_FragColor = vec4(clamp(color, 0.0, 1.0),
-    clamp(alpha, 0.0, 1.0) * qt_Opacity);
+    highp float alpha = (ring_a * 0.9 + glow) * qt_Opacity;
+    gl_FragColor = vec4(gold * (ring_a + glow * 2.0), alpha);
     }
     "
     }
@@ -169,8 +167,8 @@ Item {
     // ── Dying trigger ────────────────────────────────────────────────────────
     onDyingChanged: {
         if (dying) {
-            puff.animTime = 0.0
-            puffAnim.start()
+            deathProgress = 0.0
+            deathAnim.start()
         }
     }
     // ────────────────────────────────────────────────────────────────────────

@@ -85,14 +85,6 @@ Item {
         }
     }
 
-    Behavior on panX {
-        enabled: !panning && !zooming
-        SpringAnimation { spring: 2.8; damping: 0.28 }
-    }
-    Behavior on panY {
-        enabled: !panning && !zooming
-        SpringAnimation { spring: 2.8; damping: 0.28 }
-    }
     // ────────────────────────────────────────────────────────────────────────
 
     // ── Board model ───────────────────────────────────────────────────────────
@@ -107,27 +99,31 @@ Item {
 
     function initBoard() {
         boardReady = false
+        panning    = true
+        panX       = 0
+        panY       = 0
         score      = 0
         boardModel.clear()
         for (var i = 0; i < tileCount; i++)
             boardModel.append({
                 type:      Math.floor(Math.random() * 3),
                               dying:     false,
-                              visualRow: Math.floor(i / cols)
+                              visualRow: Math.floor(i / cols),
             })
             readyTimer.restart()
     }
 
     function loadBoard(jsonStr) {
-        boardReady    = false
-        isRestoring   = true
+        boardReady          = false
+        isRestoring         = true
+        panning             = true   // disable pan SpringAnimation during tile placement
         boardModel.clear()
         var arr = JSON.parse(jsonStr)
         for (var i = 0; i < tileCount; i++)
             boardModel.append({
                 type:      arr[i],
                 dying:     false,
-                visualRow: Math.floor(i / cols)
+                visualRow: Math.floor(i / cols),
             })
             readyTimer.restart()
     }
@@ -139,7 +135,7 @@ Item {
             return JSON.stringify(arr)
     }
 
-    property bool isRestoring: false
+    property bool isRestoring:       false
 
     Timer {
         id: readyTimer
@@ -147,11 +143,12 @@ Item {
         repeat:   false
         onTriggered: {
             boardReady = true
+            Qt.callLater(function() { panning = false })  // re-enable pan spring now board is visible
+            // Enable gravity animation AFTER tiles are placed — prevents the initial
+            // board population from animating all 144 tiles sliding in from y=0.
             if (!isRestoring) {
-                boardChanged()   // save fresh board; skip on restore to avoid redundant write
+                boardChanged()
             } else {
-                // After restoring a saved board, silently start fresh if no moves remain.
-                // A stuck saved board is an edge case — no game over overlay, just reset.
                 Qt.callLater(function() {
                     if (!hasValidMoves())
                         initBoard()
@@ -239,6 +236,13 @@ Item {
                                 if (hasMoved) {
                                     for (var j = 0; j < groupIndices.length; j++)
                                         allIndices.push(groupIndices[j])
+                                        // Debug: which tile in the group was in movedSet?
+                                        for (var dbg = 0; dbg < groupIndices.length; dbg++) {
+                                            if (movedSet[groupIndices[dbg]]) {
+                                                var dbgCol = groupIndices[dbg] % cols
+                                                var dbgRow = Math.floor(groupIndices[dbg] / cols)
+                                            }
+                                        }
                                 }
                             }
             }
@@ -275,8 +279,7 @@ Item {
     // that move — they appear at the new column instantly. Y-fall animation is
     // the visually important one.
     function applyGravity(doRefill, refillIndices) {
-        var movedSet  = {}
-        var deferred  = []   // flat pairs: [idx, targetRow, idx, targetRow, ...]
+        var movedSet = {}
 
         for (var col = 0; col < cols; col++) {
             var writeRow = rows - 1
@@ -284,14 +287,10 @@ Item {
                 var t = cellType(col, row)
                 if (t >= 0) {
                     if (writeRow !== row) {
-                        // Step 1: destination slot appears at SOURCE visual row
-                        boardModel.setProperty(boardIndex(col, writeRow), "visualRow", row)
                         boardModel.setProperty(boardIndex(col, writeRow), "type",      t)
-                        // Clear source slot
-                        boardModel.setProperty(boardIndex(col, row), "type",      -1)
-                        boardModel.setProperty(boardIndex(col, row), "visualRow", row)
-                        // Queue step 2 — deferred to next frame
-                        deferred.push(boardIndex(col, writeRow), writeRow)
+                        boardModel.setProperty(boardIndex(col, writeRow), "visualRow", writeRow)
+                        boardModel.setProperty(boardIndex(col, row),      "type",      -1)
+                        boardModel.setProperty(boardIndex(col, row),      "visualRow", row)
                         movedSet[boardIndex(col, writeRow)] = true
                     }
                     writeRow--
@@ -303,22 +302,8 @@ Item {
             }
         }
 
-        if (doRefill)
-            refillPenalty(refillIndices)
-
+        if (doRefill) refillPenalty(refillIndices)
             collapseColumns(movedSet)
-
-            // Step 2 deferred: trigger SpringAnimation by setting final visualRow.
-            // Qt.callLater runs after this JS frame completes, giving the renderer
-            // one frame to show tiles at their source position before animating.
-            if (deferred.length > 0) {
-                var d = deferred
-                Qt.callLater(function() {
-                    for (var i = 0; i < d.length; i += 2)
-                        boardModel.setProperty(d[i], "visualRow", d[i + 1])
-                })
-            }
-
             return movedSet
     }
 
@@ -329,7 +314,11 @@ Item {
                 if (writeCol !== col) {
                     for (var row = 0; row < rows; row++) {
                         var t = cellType(col, row)
-                        if (t >= 0) movedSet[boardIndex(writeCol, row)] = true
+                        // Only propagate moved status if tile already moved via gravity.
+                        // Pure horizontal compaction must never trigger cascades.
+                        if (t >= 0 && movedSet[boardIndex(col, row)])
+                            movedSet[boardIndex(writeCol, row)] = true
+                            delete movedSet[boardIndex(col, row)]
                             boardModel.setProperty(boardIndex(writeCol, row), "type",      t)
                             boardModel.setProperty(boardIndex(writeCol, row), "visualRow", row)
                             boardModel.setProperty(boardIndex(col,      row), "type",      -1)
@@ -369,7 +358,6 @@ Item {
     // cascadeType: the tile type locked for this turn's chain. -1 = none active.
     // pendingDeathIndices: indices waiting to be marked dying after zoom-out lands.
     property int cascadeType:         -1
-    property var pendingDeathIndices: null
     property int pendingDeaths:       0
     property var lastResult:          null
     property bool isInitialTap:       false  // true for first wave, false for cascade waves
@@ -380,15 +368,11 @@ Item {
     // Zooms out first if needed, then fires the dying flags.
     function startDeathWave(indices) {
         pendingDeaths = indices.length
+        // Deaths (gold) always start immediately for instant user feedback
+        executePendingDeaths(indices)
+        // Zoom cut after — deaths keep playing during the instant reposition
         var outside = isAnyOutsideViewport(indices)
-        if (outside && !zoomedOut) {
-            // Store indices, zoom out, execute deaths when zoom lands
-            pendingDeathIndices = indices
-            triggerZoomOut()
-        } else {
-            // Already zoomed or all in viewport — fire immediately
-            executePendingDeaths(indices)
-        }
+        if (outside && !zoomedOut) triggerZoomOut()
     }
 
     function executePendingDeaths(indices) {
@@ -423,14 +407,11 @@ Item {
                 lastResult = { indices: cascadeIndices, count: cascadeIndices.length }
                 startDeathWave(cascadeIndices)
             } else {
-                // Cascade ended — zoom back if we're out, then finish turn
-                cascadeType = -1
+                // Cascade ended — zoom back if needed, then finish turn
+                cascadeType  = -1
                 isInitialTap = false
-                if (zoomedOut) {
-                    triggerZoomIn()
-                } else {
+                if (zoomedOut) triggerZoomIn()
                     finalizeTurn()
-                }
             }
     }
 
@@ -488,75 +469,25 @@ Item {
     property real zoomScale: 1.0
 
     function triggerZoomOut() {
-        zooming  = true
-        gameState = "zooming"
-        prePanX  = panX
-        prePanY  = panY
-        zoomOutAnim.start()
+        prePanX   = panX
+        prePanY   = panY
+        zooming   = true
+        zoomScale = zoomScale_target
+        panX      = centeredPanX
+        panY      = centeredPanY
+        zoomedOut = true
+        Qt.callLater(function() { zooming = false })
     }
 
     function triggerZoomIn() {
-        zooming = true
-        zoomInAnim.start()
+        zooming   = true
+        zoomScale = 1.0
+        panX      = prePanX
+        panY      = prePanY
+        zoomedOut = false
+        Qt.callLater(function() { zooming = false })
     }
 
-    // Fly out — fast with snappy overshoot at endpoint
-    ParallelAnimation {
-        id: zoomOutAnim
-        NumberAnimation {
-            target: gameBoard; property: "zoomScale"
-            to: zoomScale_target; duration: 220
-            easing.type: Easing.OutBack; easing.overshoot: 1.2
-        }
-        NumberAnimation {
-            target: gameBoard; property: "panX"
-            to: centeredPanX; duration: 220
-            easing.type: Easing.OutBack; easing.overshoot: 1.2
-        }
-        NumberAnimation {
-            target: gameBoard; property: "panY"
-            to: centeredPanY; duration: 220
-            easing.type: Easing.OutBack; easing.overshoot: 1.2
-        }
-        onStopped: {
-            // Zoom landed — we are now in the zoomed-out overview state.
-            // pendingDeaths gate in MouseArea blocks input while deaths play.
-            zooming   = false
-            zoomedOut = true
-            gameState = "playing"
-            if (pendingDeathIndices !== null) {
-                var idx = pendingDeathIndices
-                pendingDeathIndices = null
-                executePendingDeaths(idx)
-            }
-        }
-    }
-
-    // Fly back — snappy return to saved position
-    ParallelAnimation {
-        id: zoomInAnim
-        NumberAnimation {
-            target: gameBoard; property: "zoomScale"
-            to: 1.0; duration: 200
-            easing.type: Easing.InCubic
-        }
-        NumberAnimation {
-            target: gameBoard; property: "panX"
-            to: prePanX; duration: 200
-            easing.type: Easing.InCubic
-        }
-        NumberAnimation {
-            target: gameBoard; property: "panY"
-            to: prePanY; duration: 200
-            easing.type: Easing.InCubic
-        }
-        onStopped: {
-            zoomedOut = false
-            zooming   = false
-            gameState = "playing"
-            finalizeTurn()
-        }
-    }
     // ────────────────────────────────────────────────────────────────────────
 
     // ── Viewport container ───────────────────────────────────────────────────
@@ -577,16 +508,17 @@ Item {
             scale:  zoomScale
 
             Repeater {
+                id: tilesRepeater
                 model: boardModel
 
                 delegate: Tile {
-                    tileType: model.type < 0 ? 0 : model.type
-                    dying:    model.dying
-                    visible:  model.type >= 0
-                    width:    tileSize
-                    height:   tileSize
-                    x:        (index % cols) * tileSize
-                    y:        model.visualRow * tileSize
+                    tileType:  model.type < 0 ? 0 : model.type
+                    dying:     model.dying
+                    visible:   model.type >= 0
+                    width:     tileSize
+                    height:    tileSize
+                    x:         (index % cols) * tileSize
+                    y:         model.visualRow * tileSize
 
                     onDeathComplete: gameBoard.onTileDied()
                 }
