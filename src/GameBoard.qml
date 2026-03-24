@@ -437,7 +437,10 @@ Item {
             var result = floodFill(col, row)
             if (result.count < 2) return
 
-                // Lock cascade color for this turn
+                // Save viewport position at tap time — this is always the zoom-in return point
+                prePanX = panX
+                prePanY = panY
+
                 cascadeType  = result.type
                 isInitialTap = true
                 lastResult   = result
@@ -459,8 +462,6 @@ Item {
     property real zoomScale: 1.0
 
     function triggerZoomOut() {
-        prePanX   = panX
-        prePanY   = panY
         zooming   = true
         zoomScale = zoomScale_target
         panX      = centeredPanX
