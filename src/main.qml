@@ -24,24 +24,24 @@ Application {
     id: app
 
     centerColor: "#1A1A2E"
-    outerColor:  "#0A0A14"
+    outerColor: "#0A0A14"
 
-    // ── Save / load ───────────────────────────────────────────────────────────
+    // ── Save / load
     function saveResult() {
-        GameStorage.dirty      = true
-        GameStorage.board      = board.boardToJson()
-        GameStorage.score      = board.score
-        GameStorage.panX       = board.panX
-        GameStorage.panY       = board.panY
+        GameStorage.dirty = true
+        GameStorage.board = board.boardToJson()
+        GameStorage.score = board.score
+        GameStorage.panX = board.panX
+        GameStorage.panY = board.panY
         GameStorage.pendingTap = ""
-        GameStorage.dirty      = false
+        GameStorage.dirty = false
     }
 
     function loadOrInit() {
         var savedBoard = GameStorage.board
         var savedScore = GameStorage.score
-        var dirty      = GameStorage.dirty
-        var pending    = GameStorage.pendingTap
+        var dirty = GameStorage.dirty
+        var pending = GameStorage.pendingTap
 
         if (dirty && savedBoard !== "" && pending !== "") {
             // Power-loss recovery — replay last tap on pre-tap board
@@ -51,11 +51,11 @@ Application {
             board.handleTap(parseInt(parts[0]), parseInt(parts[1]))
         } else if (savedBoard !== "") {
             // Restore saved game including viewport position
-            board.score   = savedScore
-            board.panning = true        // suppress pan spring while placing saved pan values
-            board.panX    = GameStorage.panX
-            board.panY    = GameStorage.panY
-            board.loadBoard(savedBoard) // loadBoard also sets panning=true; readyTimer clears it
+            board.score = savedScore
+            board.panning = true
+            board.panX = GameStorage.panX
+            board.panY = GameStorage.panY
+            board.loadBoard(savedBoard)
         } else {
             board.initBoard()
         }
@@ -63,106 +63,102 @@ Application {
 
     function newGame() {
         board.gameState = "playing"
-        board.score     = 0
+        board.score = 0
         GameStorage.clear()
         board.initBoard()
     }
-    // ────────────────────────────────────────────────────────────────────────
 
-    // ── Game board ────────────────────────────────────────────────────────────
+    // ── Game board
     GameBoard {
         id: board
 
         onBoardChanged: saveResult()
-        onScoreDelta:   {}
+        onScoreDelta: {}
         onTapStarted: {
-            GameStorage.dirty      = true
+            GameStorage.dirty = true
             GameStorage.pendingTap = col + "," + row
-            GameStorage.score      = board.score
+            GameStorage.score = board.score
         }
         onGameOver: {
             if (board.score > GameStorage.highScore)
                 GameStorage.highScore = board.score
-                gameOverOverlay.won     = false
-                gameOverOverlay.visible = true
+            gameOverOverlay.won = false
+            gameOverOverlay.visible = true
         }
         onGameWon: {
             if (board.score > GameStorage.highScore)
                 GameStorage.highScore = board.score
-                gameOverOverlay.won     = true
-                gameOverOverlay.visible = true
+            gameOverOverlay.won = true
+            gameOverOverlay.visible = true
         }
         onLongPressed: resetOverlay.visible = true
     }
-    // ────────────────────────────────────────────────────────────────────────
 
-    // ── HUD — score ───────────────────────────────────────────────────────────
+    // ── Score HUD
     Label {
         id: scoreLabel
         anchors {
-            top:              parent.top
+            top: parent.top
             horizontalCenter: parent.horizontalCenter
-            topMargin:        Dims.l(4)
+            topMargin: Dims.l(4)
         }
-        text:           board.score
+        text: board.score
         font.pixelSize: Dims.l(8)
-        visible:        board.gameState !== "gameover"
-        color:          "#E0E0E0"
+        visible: board.gameState !== "gameover"
+        color: "#E0E0E0"
     }
-    // ────────────────────────────────────────────────────────────────────────
 
-    // ── Reset overlay (long press) ────────────────────────────────────────────
+    // ── Reset overlay (long press)
     Item {
         id: resetOverlay
         anchors.fill: parent
-        visible:      false
+        visible: false
 
         Rectangle {
             anchors.fill: parent
-            color:        "#CC000000"
+            color: "#CC000000"
         }
 
-        // Tap outside the button to dismiss
+        // Tap outside button to dismiss
         MouseArea {
             anchors.fill: parent
-            onClicked:    resetOverlay.visible = false
+            onClicked: resetOverlay.visible = false
         }
 
         Column {
             anchors.centerIn: parent
-            spacing:          Dims.l(4)
+            spacing: Dims.l(4)
 
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 //% "Reset Board"
-                text:           qsTrId("id-reset-board")
+                text: qsTrId("id-reset-board")
                 font.pixelSize: Dims.l(9)
-                color:          "#E0E0E0"
+                color: "#E0E0E0"
             }
 
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 //% "Start a new game?"
-                text:           qsTrId("id-start-new-game")
+                text: qsTrId("id-start-new-game")
                 font.pixelSize: Dims.l(6)
-                color:          "#888888"
+                color: "#888888"
             }
 
-            // Confirm button — explicit tap required so accidental long press
-            // doesn't silently destroy progress
+            // Explicit confirm required — prevents accidental long press destroying progress
             Rectangle {
                 anchors.horizontalCenter: parent.horizontalCenter
-                width:  Dims.w(55)
+                width: Dims.w(55)
                 height: Dims.l(16)
                 radius: Dims.l(3)
-                color:  "#D55E00"
+                color: "#D55E00"
 
                 Label {
                     anchors.centerIn: parent
                     //% "New Game"
-                    text:           qsTrId("id-new-game")
+                    text: qsTrId("id-new-game")
                     font.pixelSize: Dims.l(7)
-                    color:          "white"
+                    color: "white"
                 }
 
                 MouseArea {
@@ -175,23 +171,22 @@ Application {
             }
         }
     }
-    // ────────────────────────────────────────────────────────────────────────
 
-    // ── Game over overlay ─────────────────────────────────────────────────────
+    // ── Game over / win overlay
     Item {
         id: gameOverOverlay
         anchors.fill: parent
-        visible:      false
+        visible: false
         property bool won: false
 
         Rectangle {
             anchors.fill: parent
-            color:        "#CC000000"
+            color: "#CC000000"
         }
 
         Column {
             anchors.centerIn: parent
-            spacing:          Dims.l(3)
+            spacing: Dims.l(3)
 
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -205,24 +200,24 @@ Application {
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 //% "Score"
-                text:           qsTrId("id-score") + ": " + board.score
+                text: qsTrId("id-score") + ": " + board.score
                 font.pixelSize: Dims.l(8)
             }
 
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 //% "Best"
-                text:           qsTrId("id-best") + ": " + GameStorage.highScore
+                text: qsTrId("id-best") + ": " + GameStorage.highScore
                 font.pixelSize: Dims.l(7)
-                color:          "#AAAAAA"
+                color: "#AAAAAA"
             }
 
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 //% "Tap to play again"
-                text:           qsTrId("id-tap-to-play-again")
+                text: qsTrId("id-tap-to-play-again")
                 font.pixelSize: Dims.l(6)
-                color:          "#888888"
+                color: "#888888"
             }
         }
 
@@ -234,7 +229,6 @@ Application {
             }
         }
     }
-    // ────────────────────────────────────────────────────────────────────────
 
     Component.onCompleted: loadOrInit()
 }
