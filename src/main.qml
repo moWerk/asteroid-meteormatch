@@ -103,9 +103,16 @@ Application {
             topMargin: Dims.l(4)
         }
         text: board.score
-        font.pixelSize: Dims.l(8)
+        font {
+            pixelSize: Dims.l(12)
+            family: "Xolonium"
+            styleName: "Bold"
+
+        }
         visible: board.gameState !== "gameover"
         color: "#E0E0E0"
+        style: Text.Outline
+        styleColor: "black"
     }
 
     // ── Reset overlay (long press)
