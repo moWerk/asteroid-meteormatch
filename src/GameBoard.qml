@@ -436,9 +436,8 @@ Item {
         if (outside && !zoomedOut) {
             pendingDeathIndices = indices
             triggerZoomOut()
-        } else {
-            executePendingDeaths(indices)
         }
+        executePendingDeaths(indices)
     }
 
     function executePendingDeaths(indices) {

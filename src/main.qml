@@ -100,7 +100,7 @@ Application {
         anchors {
             top: parent.top
             horizontalCenter: parent.horizontalCenter
-            topMargin: Dims.l(4)
+            topMargin: Dims.l(3)
         }
         text: board.score
         font {
