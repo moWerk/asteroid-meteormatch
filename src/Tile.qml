@@ -24,6 +24,7 @@ Item {
 
     property int tileType: 0
     property bool dying: false
+    property bool pressed: false
     signal deathComplete()
 
     // ── Wong palette — colorblind safe ── 0 = vermillion, 1 = sky blue, 2 = bluish green
@@ -84,6 +85,17 @@ Item {
             radius: Dims.l(1)
             color: typeColorsDim[tileType]
             opacity: 0.6
+        }
+
+        // Press highlight overlay
+        Rectangle {
+            anchors.fill: parent
+            radius: parent.radius
+            color: "white"
+            opacity: pressed ? 0.5 : 0.0
+            Behavior on opacity {
+                NumberAnimation { duration: 80; easing.type: Easing.OutQuad }
+            }
         }
     }
 

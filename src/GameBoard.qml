@@ -104,7 +104,8 @@ Item {
                 type: Math.floor(Math.random() * 3),
                 dying: false,
                 visualRow: Math.floor(i / cols),
-                visualCol: i % cols
+                visualCol: i % cols,
+                pressed: false
             })
         readyTimer.restart()
     }
@@ -120,7 +121,8 @@ Item {
                 type: arr[i],
                 dying: false,
                 visualRow: Math.floor(i / cols),
-                visualCol: i % cols
+                visualCol: i % cols,
+                pressed: false
             })
         readyTimer.restart()
     }
@@ -626,6 +628,7 @@ Item {
 
                     tileType: model.type < 0 ? 0 : model.type
                     dying: model.dying
+                    pressed: model.pressed
                     visible: model.type >= 0
                     width: tileSize
                     height: tileSize
@@ -678,6 +681,17 @@ Item {
         property real velY: 0
 
         readonly property real threshold: Dims.l(3)
+        property var pressedIndices: []
+
+        function setPressHighlight(indices, value) {
+            for (var i = 0; i < indices.length; i++)
+                boardModel.setProperty(indices[i], "pressed", value)
+        }
+
+        function clearPressHighlight() {
+            setPressHighlight(pressedIndices, false)
+            pressedIndices = []
+        }
 
         onPressed: {
             pressX = mouse.x
@@ -690,6 +704,17 @@ Item {
             velY = 0
             tracking = false
             longConsumed = false
+
+            // Highlight group under finger immediately on press
+            var boardX = mouse.x - panX
+            var boardY = mouse.y - panY
+            var result = gameBoard.floodFill(
+                Math.floor(boardX / tileSize),
+                                             Math.floor(boardY / tileSize))
+            if (result.count >= 2) {
+                pressedIndices = result.indices
+                setPressHighlight(result.indices, true)
+            }
         }
 
         onPositionChanged: {
@@ -701,6 +726,7 @@ Item {
                     tracking = true
                     panning = true
                     preventStealing = true
+                    clearPressHighlight()
             }
 
             velX = (mouse.x - lastMX) * 0.5 + velX * 0.5
@@ -714,6 +740,7 @@ Item {
         }
 
         onReleased: {
+            clearPressHighlight()
             if (!tracking && !longConsumed) {
                 var boardX = mouse.x - panX
                 var boardY = mouse.y - panY
@@ -730,6 +757,7 @@ Item {
         }
 
         onCanceled: {
+            clearPressHighlight()
             tracking = false
             panning = false
             preventStealing = false
