@@ -7,6 +7,8 @@ Name=Meteor Match
 Comment=Match falling rocks
 
 [X-Sailjail]
-# First test build: not sandboxed. A store build needs
-# OrganizationName, ApplicationName and a Permissions list instead.
-Sandboxing=Disabled
+# Sandboxed. The game needs no permissions: it only writes its own
+# config directory, ~/.config/net.mowerk/harbour-asteroid-meteormatch/.
+OrganizationName=net.mowerk
+ApplicationName=harbour-asteroid-meteormatch
+Permissions=

@@ -2,6 +2,60 @@
 
 A color-matching puzzle game for AsteroidOS watches.
 
+## SailfishOS
+
+This branch is the SailfishOS version of the game. It is built for
+Sailfish OS 5.1 on aarch64 and was run on a Jolla C2. The game is the
+1.0 watch version; this section lists what is different.
+
+### On a tall phone screen
+
+The board and its tiles keep the proportions of the watch: five tiles
+across the screen width. Only the view onto the board grows. On a watch
+it shows five by five tiles, on the C2 it fills the screen and shows
+about eleven rows. Panning, the zoom-out on a large match and the
+centring all work with the larger view.
+
+### Only on SailfishOS
+
+- **Cover**: swipe the app away and the home screen tile shows the board
+  as you left it.
+- **Sandboxed**: the app runs in the SailfishOS sandbox and needs no
+  permissions. The package passes Jolla's store validator
+  (`rpmvalidation`, only the warning that the binary is not stripped).
+
+### Install
+
+Download the RPM from the releases page and install it:
+
+    devel-su pkcon install-local harbour-asteroid-meteormatch-1.0.0-1.aarch64.rpm
+
+It is aarch64 only. The board and the highscore are stored in
+`~/.config/net.mowerk/harbour-asteroid-meteormatch/game.ini`.
+
+### Build
+
+With the Sailfish Platform SDK and a 5.1.0.11 aarch64 target:
+
+    mb2 -t SailfishOS-5.1.0.11-aarch64 build
+
+SailfishOS is on Qt 5.6. The port starts from the QML before the Qt 6
+port, replaces `Qt.callLater()` (Qt 5.8) with a small timer, draws the
+background with a `RadialGradient`, and uses small `Label` and `Dims`
+stand-ins. The Xolonium font ships with the app.
+
+### Disclosure for the port
+
+The port was written by an LLM overnight, following the author's rule
+for the tall screen: keep the board, only grow the view. The model
+checked it through window grabs on one Jolla C2. Nobody has played it
+or read its code yet.
+
+```
+Disclosure: LLMGD-2 · origin O0 (LLM-ported to the author's viewport rule; checked by the model through window grabs on one Jolla C2; not yet played or read; self-graded)
+LLMGD: v0.2; assurance=A2; flags=T; origin={O0:.7,O1:.3}; origin_headline=O0; scope=port(code+assets+packaging+docs); graded-by=claude-opus-5-5; retrieval=author-side
+```
+
 ## How to play
 
 The board is a 10 by 12 grid of colored tiles in three colors. Tap any
