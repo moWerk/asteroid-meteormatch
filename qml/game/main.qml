@@ -15,16 +15,27 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-import QtQuick
-import org.asteroid.controls
-import org.asteroid.utils
-import org.asteroid.meteormatch
+import QtQuick 2.6
+import QtGraphicalEffects 1.0
+import "."
+import org.asteroid.meteormatch 1.0
 
-Application {
+// SailfishOS: Application of org.asteroid.utils draws a radial
+// background from centerColor to outerColor. Here a plain Item does the same.
+Item {
     id: app
+    anchors.fill: parent
 
-    centerColor: "#1A1A2E"
-    outerColor: "#0A0A14"
+    property color centerColor: "#1A1A2E"
+    property color outerColor: "#0A0A14"
+
+    RadialGradient {
+        anchors.fill: parent
+        gradient: Gradient {
+            GradientStop { position: 0.0; color: app.centerColor }
+            GradientStop { position: 0.5; color: app.outerColor }
+        }
+    }
 
     // ── Save / load
     function saveResult() {
@@ -100,7 +111,8 @@ Application {
         anchors {
             top: parent.top
             horizontalCenter: parent.horizontalCenter
-            topMargin: Dims.l(3)
+            // SailfishOS: below the camera notch of a phone like the Jolla C2
+            topMargin: Dims.l(3) + Dims.l(6)
         }
         text: board.score
         font {

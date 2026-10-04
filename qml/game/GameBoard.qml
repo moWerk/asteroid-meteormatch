@@ -16,9 +16,8 @@
  * along with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-import QtQuick
-import org.asteroid.controls
-import org.asteroid.utils
+import QtQuick 2.6
+import "."
 
 Item {
     id: gameBoard
@@ -41,10 +40,31 @@ Item {
     anchors.fill: parent
 
     // ── Board constants
+    // Qt.callLater() arrived in Qt 5.8; SailfishOS has Qt 5.6.
+    Timer {
+        id: laterTimer
+        interval: 0
+        property var queue: []
+        onTriggered: {
+            var q = queue
+            queue = []
+            for (var i = 0; i < q.length; i++) q[i]()
+        }
+    }
+    function callLater(fn) {
+        laterTimer.queue.push(fn)
+        laterTimer.restart()
+    }
+
     readonly property int cols: 10
     readonly property int rows: 12
     readonly property int tileCount: cols * rows
     readonly property int tileSize: Math.floor(Math.min(parent.width, parent.height) / 5)
+    // SailfishOS: the tile size stays as on the watch, five tiles across
+    // the shorter side. The viewport fills the whole screen, so a tall
+    // phone shows more rows of the same board.
+    readonly property int vpW: Math.floor(parent.width)
+    readonly property int vpH: Math.floor(parent.height)
     readonly property int boardPixelW: cols * tileSize
     readonly property int boardPixelH: rows * tileSize
     readonly property int vpSize: tileSize * 5
@@ -59,13 +79,13 @@ Item {
     property real prePanY: 0
 
     readonly property int edgePad: tileSize
-    readonly property real panMinX: -(boardPixelW - vpSize + edgePad)
+    readonly property real panMinX: Math.min(edgePad, -(boardPixelW - vpW + edgePad))
     readonly property real panMaxX: edgePad
-    readonly property real panMinY: -(boardPixelH - vpSize + edgePad)
+    readonly property real panMinY: Math.min(edgePad, -(boardPixelH - vpH + edgePad))
     readonly property real panMaxY: edgePad
-    readonly property real zoomScale_target: vpSize / Math.max(boardPixelW, boardPixelH)
-    readonly property real centeredPanX: (vpSize - boardPixelW) / 2
-    readonly property real centeredPanY: (vpSize - boardPixelH) / 2
+    readonly property real zoomScale_target: Math.min(vpW / boardPixelW, vpH / boardPixelH)
+    readonly property real centeredPanX: (vpW - boardPixelW) / 2
+    readonly property real centeredPanY: (vpH - boardPixelH) / 2
 
     function clampPan(px, py) {
         return {
@@ -142,11 +162,11 @@ Item {
         repeat: false
         onTriggered: {
             boardReady = true
-            Qt.callLater(function() { panning = false })
+            callLater(function() { panning = false })
             if (!isRestoring) {
                 boardChanged()
             } else {
-                Qt.callLater(function() {
+                callLater(function() {
                     if (!hasValidMoves()) initBoard()
                 })
             }
@@ -158,8 +178,8 @@ Item {
     function isAnyOutsideViewport(indices) {
         var vpLeft = Math.floor(-panX / tileSize)
         var vpTop = Math.floor(-panY / tileSize)
-        var vpRight = vpLeft + 5
-        var vpBottom = vpTop + 5
+        var vpRight = vpLeft + Math.floor(vpW / tileSize)
+        var vpBottom = vpTop + Math.floor(vpH / tileSize)
         for (var i = 0; i < indices.length; i++) {
             var c = indices[i] % cols
             var r = Math.floor(indices[i] / cols)
@@ -583,8 +603,8 @@ Item {
     // ── Viewport
     Item {
         id: viewport
-        width: vpSize
-        height: vpSize
+        width: vpW
+        height: vpH
         anchors.centerIn: parent
         clip: true
         visible: boardReady

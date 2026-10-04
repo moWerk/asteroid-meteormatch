@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<!-- Launcher icon for SailfishOS: square background as on the Terminal icon
+     (Sailfish Apps icon template, CC BY 3.0), and a 3x3 grid of the game's
+     tiles in its Wong palette, with the diagonal as a matching group. -->
+<defs><radialGradient id="bg" cx="256" cy="256" r="256" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2f3f73"/><stop offset="1" stop-color="#0a0f24"/></radialGradient></defs>
+<rect x="1.8" y="1.8" width="508.4" height="508.4" rx="8.5" ry="8.5" fill="url(#bg)"/>
+<g transform="translate(256 256) scale(0.82) translate(-256 -256)">
+<rect x="61.0" y="61.0" width="118" height="118" rx="22" fill="#D55E00"/>
+<rect x="73.0" y="73.0" width="26" height="26" rx="8" fill="#ffffff" opacity="0.85"/>
+<rect x="133.0" y="133.0" width="34" height="34" rx="9" fill="#7A3500"/>
+<rect x="197.0" y="61.0" width="118" height="118" rx="22" fill="#56B4E9"/>
+<rect x="209.0" y="73.0" width="26" height="26" rx="8" fill="#ffffff" opacity="0.85"/>
+<rect x="269.0" y="133.0" width="34" height="34" rx="9" fill="#1A5F8A"/>
+<rect x="333.0" y="61.0" width="118" height="118" rx="22" fill="#56B4E9"/>
+<rect x="345.0" y="73.0" width="26" height="26" rx="8" fill="#ffffff" opacity="0.85"/>
+<rect x="405.0" y="133.0" width="34" height="34" rx="9" fill="#1A5F8A"/>
+<rect x="61.0" y="197.0" width="118" height="118" rx="22" fill="#009E73"/>
+<rect x="73.0" y="209.0" width="26" height="26" rx="8" fill="#ffffff" opacity="0.85"/>
+<rect x="133.0" y="269.0" width="34" height="34" rx="9" fill="#005740"/>
+<rect x="197.0" y="197.0" width="118" height="118" rx="22" fill="#D55E00"/>
+<rect x="209.0" y="209.0" width="26" height="26" rx="8" fill="#ffffff" opacity="0.85"/>
+<rect x="269.0" y="269.0" width="34" height="34" rx="9" fill="#7A3500"/>
+<rect x="333.0" y="197.0" width="118" height="118" rx="22" fill="#56B4E9"/>
+<rect x="345.0" y="209.0" width="26" height="26" rx="8" fill="#ffffff" opacity="0.85"/>
+<rect x="405.0" y="269.0" width="34" height="34" rx="9" fill="#1A5F8A"/>
+<rect x="61.0" y="333.0" width="118" height="118" rx="22" fill="#009E73"/>
+<rect x="73.0" y="345.0" width="26" height="26" rx="8" fill="#ffffff" opacity="0.85"/>
+<rect x="133.0" y="405.0" width="34" height="34" rx="9" fill="#005740"/>
+<rect x="197.0" y="333.0" width="118" height="118" rx="22" fill="#009E73"/>
+<rect x="209.0" y="345.0" width="26" height="26" rx="8" fill="#ffffff" opacity="0.85"/>
+<rect x="269.0" y="405.0" width="34" height="34" rx="9" fill="#005740"/>
+<rect x="333.0" y="333.0" width="118" height="118" rx="22" fill="#D55E00"/>
+<rect x="345.0" y="345.0" width="26" height="26" rx="8" fill="#ffffff" opacity="0.85"/>
+<rect x="405.0" y="405.0" width="34" height="34" rx="9" fill="#7A3500"/>
+</g>
+</svg>
