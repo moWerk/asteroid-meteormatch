@@ -48,11 +48,11 @@ stand-ins. The Xolonium font ships with the app.
 
 The port was written by an LLM overnight, following the author's rule
 for the tall screen: keep the board, only grow the view. The model
-checked it through window grabs on one Jolla C2. Nobody has played it
-or read its code yet.
+checked it through window grabs on one Jolla C2, and the author played
+it there and won a game. He has not read the port's code.
 
 ```
-Disclosure: LLMGD-2 · origin O0 (LLM-ported to the author's viewport rule; checked by the model through window grabs on one Jolla C2; not yet played or read; self-graded)
+Disclosure: LLMGD-2 · origin O0 (LLM-ported to the author's viewport rule; played by the author on one Jolla C2; code not read; self-graded)
 LLMGD: v0.2; assurance=A2; flags=T; origin={O0:.7,O1:.3}; origin_headline=O0; scope=port(code+assets+packaging+docs); graded-by=claude-opus-5-5; retrieval=author-side
 ```
 
