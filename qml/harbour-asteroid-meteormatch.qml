@@ -22,6 +22,11 @@ import "game" as Game
 ApplicationWindow {
     id: app
 
+    // The game asks for its fonts by family name. AsteroidOS has them system
+    // wide, here they come with the app (was QFontDatabase in main.cpp).
+    FontLoader { source: "game/fonts/Xolonium-Bold.otf" }
+    FontLoader { source: "game/fonts/Xolonium-Regular.otf" }
+
     allowedOrientations: Orientation.Portrait
 
     // The board lives in the page while the app is in front. When the app

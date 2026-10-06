@@ -2,7 +2,7 @@
 Type=Application
 X-Nemo-Application-Type=silica-qt5
 Icon=harbour-asteroid-meteormatch
-Exec=harbour-asteroid-meteormatch
+Exec=sailfish-qml harbour-asteroid-meteormatch
 Name=Meteor Match
 Comment=Match falling rocks
 

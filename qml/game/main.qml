@@ -18,7 +18,6 @@
 import QtQuick 2.6
 import QtGraphicalEffects 1.0
 import "."
-import org.asteroid.meteormatch 1.0
 
 // SailfishOS: Application of org.asteroid.utils draws a radial
 // background from centerColor to outerColor. Here a plain Item does the same.

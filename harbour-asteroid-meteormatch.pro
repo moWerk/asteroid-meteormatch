@@ -1,21 +1,27 @@
+# Pure QML, no binary: sailfish-qml (libsailfishapp-launcher) runs
+# qml/harbour-asteroid-meteormatch.qml, so one noarch package serves every architecture.
+TEMPLATE = aux
 TARGET = harbour-asteroid-meteormatch
 
-CONFIG += sailfishapp sailfishapp_i18n sailfishapp_i18n_idbased sailfishapp_i18n_unfinished
+CONFIG += sailfishapp_i18n sailfishapp_i18n_idbased sailfishapp_i18n_unfinished
 
-SOURCES += src/main.cpp \
-    src/GameStorage.cpp
+qml.files = qml
+qml.path = /usr/share/$${TARGET}
+desktop.files = $${TARGET}.desktop
+desktop.path = /usr/share/applications
+INSTALLS += qml desktop
 
-HEADERS += src/GameStorage.h
+for(size, $$list(86x86 108x108 128x128 172x172)) {
+    icon$${size}.files = icons/$${size}/$${TARGET}.png
+    icon$${size}.path = /usr/share/icons/hicolor/$${size}/apps
+    INSTALLS += icon$${size}
+}
 
-DISTFILES += qml/harbour-asteroid-meteormatch.qml \
-    qml/game/*.qml \
-    qml/game/qmldir \
-    rpm/harbour-asteroid-meteormatch.spec \
-    harbour-asteroid-meteormatch.desktop
+DISTFILES += qml/$${TARGET}.qml \
+    $$files(qml/game/*) \
+    rpm/$${TARGET}.spec \
+    $${TARGET}.desktop
 
-SAILFISHAPP_ICONS = 86x86 108x108 128x128 172x172
-
-# The texts use qsTrId() with //% engineering English. The id based
-# build turns that into harbour-asteroid-meteormatch.qm, which
-# libsailfishapp loads as the default translation.
+# qsTrId() with //% engineering English: the id based build keeps the
+# unfinished entries, so the default .qm carries that English.
 TRANSLATIONS += translations/harbour-asteroid-meteormatch.ts
