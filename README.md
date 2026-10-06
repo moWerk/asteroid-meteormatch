@@ -4,6 +4,8 @@ A color-matching puzzle game for AsteroidOS watches.
 
 ## SailfishOS
 
+Reviewing the code? Start with [review-and-architecture-hints.md](review-and-architecture-hints.md).
+
 This branch is the SailfishOS version of the game. It is built for
 Sailfish OS 5.1 on aarch64 and was run on a Jolla C2. The game is the
 1.0 watch version; this section lists what is different.
