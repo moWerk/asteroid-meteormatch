@@ -69,13 +69,24 @@ Item {
         } else {
             board.initBoard()
         }
+        showTitle()
     }
 
-    function newGame() {
+    function showTitle() {
+        titleScreen.opacity = 1
+        titleScreen.visible = true
+    }
+
+    function resetBoard() {
         board.gameState = "playing"
         board.score = 0
         GameStorage.clear()
         board.initBoard()
+    }
+
+    function newGame() {
+        resetBoard()
+        showTitle()
     }
 
     // ── Game board
@@ -199,44 +210,71 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            color: "#CC000000"
+            color: "black"
+        }
+
+        // SailfishOS: the cover art, dimmed to half (see the title screen)
+        Image {
+            anchors.fill: parent
+            source: "img/title-art.jpg"
+            fillMode: Image.PreserveAspectCrop
+            opacity: 0.5
+        }
+
+        // SailfishOS: laid out like the title screen, in its font: the verdict
+        // where the title sits, the scores below it with room to breathe, the
+        // prompt where "Tap to play" sits.
+        Label {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.top
+            anchors.verticalCenterOffset: parent.height * 0.25 - Dims.l(12)
+            //% "You Won!"
+            text: gameOverOverlay.won ? qsTrId("id-you-won")
+            //% "Game Over!"
+            : qsTrId("id-game-over")
+            font { family: "Fyodor"; pixelSize: Dims.l(18) }
+            color: "#E0E0E0"
+            style: Text.Outline
+            styleColor: "black"
         }
 
         Column {
-            anchors.centerIn: parent
-            spacing: Dims.l(3)
-
-            Label {
-                anchors.horizontalCenter: parent.horizontalCenter
-                //% "You Won!"
-                text: gameOverOverlay.won ? qsTrId("id-you-won")
-                //% "Game Over!"
-                : qsTrId("id-game-over")
-                font.pixelSize: Dims.l(10)
-            }
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.top
+            anchors.verticalCenterOffset: parent.height * 0.5
+            spacing: Dims.l(8)
 
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 //% "Score"
                 text: qsTrId("id-score") + ": " + board.score
-                font.pixelSize: Dims.l(8)
+                font { family: "Fyodor"; pixelSize: Dims.l(12) }
+                color: "#E0E0E0"
+                style: Text.Outline
+                styleColor: "black"
             }
 
             Label {
                 anchors.horizontalCenter: parent.horizontalCenter
                 //% "Best"
                 text: qsTrId("id-best") + ": " + GameStorage.highScore
-                font.pixelSize: Dims.l(7)
-                color: "#AAAAAA"
+                font { family: "Fyodor"; pixelSize: Dims.l(9) }
+                color: "#BBBBBB"
+                style: Text.Outline
+                styleColor: "black"
             }
+        }
 
-            Label {
-                anchors.horizontalCenter: parent.horizontalCenter
-                //% "Tap to play again"
-                text: qsTrId("id-tap-to-play-again")
-                font.pixelSize: Dims.l(6)
-                color: "#888888"
-            }
+        Label {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.top
+            anchors.verticalCenterOffset: parent.height * 0.745
+            //% "Tap to play again"
+            text: qsTrId("id-tap-to-play-again")
+            font { family: "Fyodor"; pixelSize: Dims.l(10) }
+            color: "#E0E0E0"
+            style: Text.Outline
+            styleColor: "black"
         }
 
         MouseArea {
@@ -244,6 +282,64 @@ Item {
             onClicked: {
                 gameOverOverlay.visible = false
                 newGame()
+            }
+        }
+    }
+
+    // ── Title screen
+    // SailfishOS: shown on every start and before every new game; a saved
+    // board waits underneath and survives the title. Cover art
+    // (AI-generated with Grok from the author's prompt; see img/README); a tap
+    // anywhere fades it out to the new board.
+    Item {
+        id: titleScreen
+        anchors.fill: parent
+        visible: false
+        opacity: 1
+        Behavior on opacity { NumberAnimation { duration: 1000; easing.type: Easing.InOutQuad } }
+        onOpacityChanged: if (opacity === 0) visible = false
+
+        Image {
+            anchors.fill: parent
+            source: "img/title-art.jpg"
+            fillMode: Image.PreserveAspectCrop
+        }
+
+        Label {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.top
+            anchors.verticalCenterOffset: parent.height * 0.25 - Dims.l(12)
+            text: "METEOR\nMATCH"
+            horizontalAlignment: Text.AlignHCenter
+            font { family: "Fyodor"; pixelSize: Dims.l(24) }
+            color: "#E0E0E0"
+            style: Text.Outline
+            styleColor: "black"
+        }
+
+        Label {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.top
+            anchors.verticalCenterOffset: parent.height * 0.745
+            //% "Tap to play"
+            text: qsTrId("id-tap-to-play")
+            font { family: "Fyodor"; pixelSize: Dims.l(12) }
+            color: "#E0E0E0"
+            style: Text.Outline
+            styleColor: "black"
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            enabled: titleScreen.opacity === 1
+            onClicked: {
+                // A finished game restored at start waits underneath with its
+                // game over overlay; the tap on the title already means "play".
+                if (gameOverOverlay.visible) {
+                    gameOverOverlay.visible = false
+                    resetBoard()
+                }
+                titleScreen.opacity = 0
             }
         }
     }

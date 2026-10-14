@@ -26,6 +26,7 @@ ApplicationWindow {
     // wide, here they come with the app (was QFontDatabase in main.cpp).
     FontLoader { source: "game/fonts/Xolonium-Bold.otf" }
     FontLoader { source: "game/fonts/Xolonium-Regular.otf" }
+    FontLoader { source: "game/fonts/Fyodor-BoldCondensed.ttf" }
 
     allowedOrientations: Orientation.Portrait
 
