@@ -23,6 +23,27 @@ BuildRequires:  qt5-qttools-linguist
 Meteor Match is a tile matching game: tap a group of two or more equal
 meteors to clear it, the rest falls down. Ported from AsteroidOS.
 
+%if 0%{?_chum}
+Title: Meteor Match
+Type: desktop-application
+DeveloperName: moWerk
+Categories:
+ - Game
+ - LogicGame
+Custom:
+  Repo: https://github.com/moWerk/asteroid-meteormatch
+PackageIcon: https://raw.githubusercontent.com/moWerk/asteroid-meteormatch/sailfishos/store/icon-172x172.png
+AIRating: V
+AINote: The SailfishOS port was written by an LLM (Claude), directed and play-tested by the author on real devices; every commit carries an LLMGD disclosure line (see the README). The title art is AI-generated.
+Screenshots:
+ - https://raw.githubusercontent.com/moWerk/asteroid-meteormatch/sailfishos/store/screenshot-start-1080x2400.jpg
+ - https://raw.githubusercontent.com/moWerk/asteroid-meteormatch/sailfishos/store/screenshot-action-1080x2400.jpg
+ - https://raw.githubusercontent.com/moWerk/asteroid-meteormatch/sailfishos/store/screenshot-gameover-1080x2400.jpg
+Links:
+  Homepage: https://github.com/moWerk/asteroid-meteormatch/tree/sailfishos
+  Bugtracker: https://github.com/moWerk/asteroid-meteormatch/issues
+%endif
+
 %prep
 %setup -q -n %{name}-%{version}
 
