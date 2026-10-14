@@ -6,8 +6,9 @@ A color-matching puzzle game for AsteroidOS watches.
 
 Reviewing the code? Start with [review-and-architecture-hints.md](review-and-architecture-hints.md).
 
-This branch is the SailfishOS version of the game. It is built for
-Sailfish OS 5.1 on aarch64 and was run on a Jolla C2. The game is the
+This branch is the SailfishOS version of the game. It is plain QML, so
+one noarch package runs on Sailfish OS 3.4 and later. It was played on a
+Jolla C2. The game is the
 1.0 watch version; this section lists what is different.
 
 ### On a tall phone screen
@@ -20,20 +21,26 @@ centring all work with the larger view.
 
 ### Only on SailfishOS
 
+- **Title screen** (1.2): on every start and before every new game, the
+  title art with "METEOR MATCH" and "Tap to play" in Fyodor; a tap fades
+  to the board (the saved one at start). The result screen shows the art
+  dimmed to half, in the same font and layout. The art is AI-generated
+  (see `qml/game/img/README`).
+
 - **Cover**: swipe the app away and the home screen tile shows the board
   as you left it.
 - **Sandboxed**: the app runs in the SailfishOS sandbox and needs no
   permissions. The package passes Jolla's store validator
-  (`rpmvalidation`, only the warning that the binary is not stripped).
+  (`rpmvalidation`).
 
 ### Install
 
 Download the RPM from the releases page and install it:
 
-    devel-su pkcon install-local harbour-asteroid-meteormatch-1.0.0-1.aarch64.rpm
+    devel-su pkcon install-local harbour-asteroid-meteormatch-1.2.0-1.noarch.rpm
 
-It is aarch64 only. The board and the highscore are stored in
-`~/.config/net.mowerk/harbour-asteroid-meteormatch/game.ini`.
+The board and the highscore are stored in dconf under
+`/apps/harbour-asteroid-meteormatch`.
 
 ### Build
 
@@ -44,7 +51,7 @@ With the Sailfish Platform SDK and a 5.1.0.11 aarch64 target:
 SailfishOS is on Qt 5.6. The port starts from the QML before the Qt 6
 port, replaces `Qt.callLater()` (Qt 5.8) with a small timer, draws the
 background with a `RadialGradient`, and uses small `Label` and `Dims`
-stand-ins. The Xolonium font ships with the app.
+stand-ins. The Xolonium and Fyodor fonts ship with the app.
 
 ### Disclosure for the port
 
@@ -73,8 +80,8 @@ two scores one point. A group of ten scores eighty-one points. Larger
 groups are always worth more than splitting the same tiles into smaller
 matches.
 
-If falling tiles form a new matching group of three or more, a chain
-reaction triggers automatically and scores additional points by the
+If falling tiles form a new group of three or more in the color that
+was just cleared, a chain reaction triggers automatically and scores additional points by the
 same formula. Chain reactions can continue as long as new matches keep
 forming.
 
@@ -103,7 +110,8 @@ board on next launch so no progress is lost.
 
 The game ends when no two adjacent tiles of the same color remain.
 The final score is shown along with your all-time high score. Tap
-anywhere on the result screen to start a new game.
+anywhere on the result screen to start a new game (on SailfishOS, via
+the title screen).
 
 ### Pure QML, one package for every phone (1.1.0)
 

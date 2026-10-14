@@ -3,7 +3,7 @@
 
 Name:       harbour-asteroid-meteormatch
 Summary:    Meteor Match, a tile matching game
-Version:    1.1.0
+Version:    1.2.0
 Release:    1
 License:    GPLv3+
 URL:        https://github.com/moWerk/asteroid-meteormatch
